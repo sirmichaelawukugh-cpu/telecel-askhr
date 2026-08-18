@@ -21,7 +21,7 @@
   --radius: 14px;
 }
 
-[data-theme="dark"] {
+[data-theme="dark"], body.theme-dark {
   --red-900: #ff9b9b;
   --red-700: #ff5b5b;
   --red-600: #e02d2d;
