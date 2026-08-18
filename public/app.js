@@ -1,10 +1,39 @@
 const state = {
   tickets: [],
   currentView: 'dashboard',
-  charts: {}
+  charts: {},
+  user: null
 };
 
 const $ = sel => document.querySelector(sel);
+
+/* ---------- Auth ---------- */
+function getToken() { return localStorage.getItem('askhr-token'); }
+function getUser() {
+  try { return JSON.parse(localStorage.getItem('askhr-user')); } catch (e) { return null; }
+}
+function isAdmin() { return state.user && state.user.role === 'admin'; }
+function authHeaders() { return { 'Authorization': 'Bearer ' + getToken(), 'Content-Type': 'application/json' }; }
+
+function requireAuth() {
+  if (!getToken()) { window.location.href = '/login.html'; return false; }
+  state.user = getUser();
+  applyRoleUI();
+  return true;
+}
+
+function applyRoleUI() {
+  const adminOnly = document.querySelectorAll('[data-admin]');
+  adminOnly.forEach(el => { el.style.display = isAdmin() ? '' : 'none'; });
+  const userLabel = $('#userLabel');
+  if (userLabel) userLabel.textContent = state.user ? state.user.name + ' (' + state.user.role + ')' : '';
+}
+
+function logout() {
+  localStorage.removeItem('askhr-token');
+  localStorage.removeItem('askhr-user');
+  window.location.href = '/login.html';
+}
 
 /* ---------- Theme (day / night) ---------- */
 function applyTheme(theme) {
@@ -46,10 +75,12 @@ function toast(msg, type = '') {
 
 /* ---------- API helpers ---------- */
 async function api(url, options = {}) {
-  const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options
-  });
+  const headers = Object.assign({}, authHeaders(), options.headers || {});
+  if (headers['Content-Type'] === undefined && options.body && typeof options.body === 'string') {
+    headers['Content-Type'] = 'application/json';
+  }
+  const res = await fetch(url, { ...options, headers });
+  if (res.status === 401) { logout(); throw new Error('Session expired'); }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || 'Request failed');
@@ -70,6 +101,14 @@ function reportParams() {
 
 /* ---------- Dashboard ---------- */
 async function loadStats() {
+  if (!isAdmin()) {
+    $('#statTotal').textContent = '-';
+    $('#statOpen').textContent = '-';
+    $('#statProgress').textContent = '-';
+    $('#statResolved').textContent = '-';
+    $('#statClosed').textContent = '-';
+    return;
+  }
   try {
     const s = await api('/api/stats');
     $('#statTotal').textContent = s.total;
@@ -188,7 +227,7 @@ async function submitTicket(e) {
   const btn = $('#ticketForm button[type="submit"]');
   btn.disabled = true;
   try {
-    const res = await fetch('/api/tickets', { method: 'POST', body: fd });
+    const res = await fetch('/api/tickets', { method: 'POST', body: fd, headers: { 'Authorization': 'Bearer ' + getToken() } });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error || 'Request failed');
@@ -394,10 +433,24 @@ function exportExcel() {
   const a = document.createElement('a');
   a.href = url;
   a.download = 'AskHR_ticket_report.xlsx';
+  a.setAttribute('data-auth-download', 'true');
   document.body.appendChild(a);
   a.click();
   a.remove();
   toast('Excel report downloading...', 'success');
+}
+
+function downloadWithAuth(url, filename) {
+  fetch(url, { headers: { 'Authorization': 'Bearer ' + getToken() } })
+    .then(r => r.blob())
+    .then(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    })
+    .catch(err => toast(err.message, 'error'));
 }
 
 /* ---------- Events ---------- */
@@ -504,6 +557,10 @@ $('#searchBox').addEventListener('input', () => {
 });
 $('#filterStatus').addEventListener('change', loadTickets);
 $('#filterPriority').addEventListener('change', loadTickets);
+
+$('#logoutBtn').addEventListener('click', logout);
+
+if (!requireAuth()) { throw new Error('Not authenticated'); }
 
 initTheme();
 loadStats();

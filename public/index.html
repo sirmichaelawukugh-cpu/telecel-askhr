@@ -21,9 +21,13 @@
         <a href="#dashboard" class="nav-link active" data-view="dashboard">Dashboard</a>
         <a href="#new-ticket" class="nav-link" data-view="new">New Request</a>
         <a href="#tickets" class="nav-link" data-view="tickets">My Tickets</a>
-        <a href="#reports" class="nav-link" data-view="reports">Reports</a>
+        <a href="#reports" class="nav-link" data-view="reports" data-admin>Reports</a>
       </nav>
-      <button id="themeToggle" class="theme-toggle" title="Toggle day / night theme" aria-label="Toggle theme">&#127774;</button>
+      <div class="topbar-right">
+        <span id="userLabel" class="user-label"></span>
+        <button id="logoutBtn" class="btn btn-sm btn-outline topbar-logout">Logout</button>
+        <button id="themeToggle" class="theme-toggle" title="Toggle day / night theme" aria-label="Toggle theme">&#127774;</button>
+      </div>
     </div>
   </header>
 

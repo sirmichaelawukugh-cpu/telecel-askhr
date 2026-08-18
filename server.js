@@ -5,6 +5,7 @@ const path = require('path');
 const multer = require('multer');
 const { sendTicketToHR, sendConfirmationToRequester, sendStatusUpdate } = require('./lib/mailer');
 const { buildTicketsWorkbook } = require('./lib/reports');
+const auth = require('./lib/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -42,17 +43,12 @@ app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '1d' }));
 
 let tickets = [];
 if (fs.existsSync(DATA_FILE)) {
-  try {
-    tickets = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-  } catch (e) {
-    tickets = [];
-  }
+  try { tickets = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); } catch (e) { tickets = []; }
 }
 
 function saveTickets() {
-  if (!fs.existsSync(path.dirname(DATA_FILE))) {
-    fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-  }
+  const dir = path.dirname(DATA_FILE);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(DATA_FILE, JSON.stringify(tickets, null, 2));
 }
 
@@ -79,17 +75,65 @@ function applyFilters(list, req) {
   return result;
 }
 
-app.get('/api/tickets', (req, res) => {
-  res.json(applyFilters(tickets, req));
+auth.seedDefaultUsers();
+
+// ====== Auth routes (public) ======
+
+app.post('/api/auth/login', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'Username and password are required' });
+  const user = auth.findUser(username);
+  if (!user || !auth.verifyPassword(password, user.salt, user.password)) {
+    return res.status(401).json({ error: 'Invalid username or password' });
+  }
+  const token = auth.generateToken(user);
+  res.json({ token, user: { id: user.id, username: user.username, name: user.name, role: user.role, email: user.email } });
 });
 
-app.get('/api/tickets/:id', (req, res) => {
+app.get('/api/auth/me', auth.authenticate, (req, res) => {
+  const user = auth.findUserById(req.user.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const { password, salt, ...safe } = user;
+  res.json(safe);
+});
+
+// ====== Admin user management ======
+
+app.get('/api/users', auth.authenticate, auth.requireAdmin, (req, res) => {
+  res.json(auth.getAllUsers());
+});
+
+app.post('/api/users', auth.authenticate, auth.requireAdmin, (req, res) => {
+  const { username, password, name, email, role } = req.body;
+  if (!username || !password || !name) {
+    return res.status(400).json({ error: 'username, password and name are required' });
+  }
+  const user = auth.createUser({ username, password, name, email, role });
+  if (!user) return res.status(409).json({ error: 'Username already exists' });
+  const { password: p, salt: s, ...safe } = user;
+  res.status(201).json(safe);
+});
+
+// ====== Tickets (authenticated) ======
+
+app.get('/api/tickets', auth.authenticate, (req, res) => {
+  let list = applyFilters(tickets, req);
+  if (req.user.role !== 'admin') {
+    list = list.filter(t => t.email === req.user.email || t.name === req.user.name);
+  }
+  res.json(list);
+});
+
+app.get('/api/tickets/:id', auth.authenticate, (req, res) => {
   const ticket = tickets.find(t => t.id === Number(req.params.id));
   if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+  if (req.user.role !== 'admin' && ticket.email !== req.user.email && ticket.name !== req.user.name) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
   res.json(ticket);
 });
 
-app.post('/api/tickets', (req, res) => {
+app.post('/api/tickets', auth.authenticate, (req, res) => {
   const contentType = req.headers['content-type'] || '';
   if (contentType.includes('application/json')) {
     return handleCreateTicket(req, res, []);
@@ -141,12 +185,11 @@ function handleCreateTicket(req, res, files) {
 
 function cleanupFiles(files) {
   for (const f of files) {
-    const diskPath = path.join(UPLOAD_DIR, path.basename(f.path));
-    fs.unlink(diskPath, () => {});
+    fs.unlink(path.join(UPLOAD_DIR, path.basename(f.path)), () => {});
   }
 }
 
-app.patch('/api/tickets/:id', (req, res) => {
+app.patch('/api/tickets/:id', auth.authenticate, auth.requireAdmin, (req, res) => {
   const ticket = tickets.find(t => t.id === Number(req.params.id));
   if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
 
@@ -165,7 +208,7 @@ app.patch('/api/tickets/:id', (req, res) => {
   res.json(ticket);
 });
 
-app.delete('/api/tickets/:id', (req, res) => {
+app.delete('/api/tickets/:id', auth.authenticate, auth.requireAdmin, (req, res) => {
   const idx = tickets.findIndex(t => t.id === Number(req.params.id));
   if (idx === -1) return res.status(404).json({ error: 'Ticket not found' });
   const [removed] = tickets.splice(idx, 1);
@@ -174,7 +217,9 @@ app.delete('/api/tickets/:id', (req, res) => {
   res.json(removed);
 });
 
-app.get('/api/stats', (req, res) => {
+// ====== Stats & Analytics (admin only) ======
+
+app.get('/api/stats', auth.authenticate, auth.requireAdmin, (req, res) => {
   const count = s => tickets.filter(t => t.status === s).length;
   res.json({
     total: tickets.length,
@@ -186,13 +231,9 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
-app.get('/api/analytics', (req, res) => {
+app.get('/api/analytics', auth.authenticate, auth.requireAdmin, (req, res) => {
   const filtered = applyFilters(tickets, req);
-  const byStatus = {};
-  const byDepartment = {};
-  const byPriority = {};
-  const byCategory = {};
-  const byDay = {};
+  const byStatus = {}, byDepartment = {}, byPriority = {}, byCategory = {}, byDay = {};
   filtered.forEach(t => {
     byStatus[t.status] = (byStatus[t.status] || 0) + 1;
     byDepartment[t.department] = (byDepartment[t.department] || 0) + 1;
@@ -201,43 +242,24 @@ app.get('/api/analytics', (req, res) => {
     const day = new Date(t.createdAt).toISOString().slice(0, 10);
     byDay[day] = (byDay[day] || 0) + 1;
   });
+  const resolved = filtered.filter(t => t.status === 'Resolved' || t.status === 'Closed');
+  const avgDays = resolved.length
+    ? Math.round((resolved.reduce((s, t) => s + (new Date(t.updatedAt) - new Date(t.createdAt)) / 86400000, 0) / resolved.length) * 10) / 10
+    : null;
   res.json({
-    total: filtered.length,
-    byStatus,
-    byDepartment,
-    byPriority,
-    byCategory,
+    total: filtered.length, byStatus, byDepartment, byPriority, byCategory,
     byDay: Object.keys(byDay).sort().map(d => ({ date: d, count: byDay[d] })),
-    avgResolutionDays: avgResolutionDays(filtered)
+    avgResolutionDays: avgDays
   });
 });
 
-function avgResolutionDays(list) {
-  const resolved = list.filter(t => t.status === 'Resolved' || t.status === 'Closed');
-  if (!resolved.length) return null;
-  const totalDays = resolved.reduce((sum, t) => {
-    return sum + (new Date(t.updatedAt) - new Date(t.createdAt)) / 86400000;
-  }, 0);
-  return Math.round((totalDays / resolved.length) * 10) / 10;
-}
-
-app.get('/api/report/excel', async (req, res) => {
+app.get('/api/report/excel', auth.authenticate, auth.requireAdmin, async (req, res) => {
   try {
     const filtered = applyFilters(tickets, req);
-    const filters = {
-      status: req.query.status,
-      priority: req.query.priority,
-      department: req.query.department
-    };
+    const filters = { status: req.query.status, priority: req.query.priority, department: req.query.department };
     const wb = await buildTicketsWorkbook(filtered, filters);
-    res.setHeader(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    );
-    res.setHeader(
-      'Content-Disposition',
-      'attachment; filename="AskHR_ticket_report.xlsx"'
-    );
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="AskHR_ticket_report.xlsx"');
     await wb.xlsx.write(res);
     res.end();
   } catch (err) {

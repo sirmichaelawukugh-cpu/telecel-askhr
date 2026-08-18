@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Telecel AskHR - Login</title>
+  <link rel="icon" type="image/png" href="telecel-logo.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="login-page">
+  <div class="login-wrapper">
+    <div class="login-card">
+      <div class="login-header">
+        <img src="telecel-logo.png" alt="Telecel Ghana" class="login-logo" />
+        <h1>Telecel AskHR</h1>
+        <p>Sign in to the Employee Support Desk</p>
+      </div>
+      <form id="loginForm" autocomplete="off">
+        <div class="form-field">
+          <label for="username">Username</label>
+          <input type="text" id="username" required placeholder="Enter your username" autocomplete="username" />
+        </div>
+        <div class="form-field">
+          <label for="password">Password</label>
+          <input type="password" id="password" required placeholder="Enter your password" autocomplete="current-password" />
+        </div>
+        <div id="loginError" class="login-error" hidden></div>
+        <button type="submit" class="btn btn-primary login-btn" id="loginBtn">Sign In</button>
+      </form>
+      <p class="login-footer">Contact HR if you need an account</p>
+    </div>
+  </div>
+  <div id="toast" class="toast" hidden></div>
+  <script>
+    if (localStorage.getItem('askhr-token')) {
+      window.location.href = '/';
+    }
+    const form = document.getElementById('loginForm');
+    const errEl = document.getElementById('loginError');
+    const btn = document.getElementById('loginBtn');
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      errEl.hidden = true;
+      btn.disabled = true;
+      btn.textContent = 'Signing in...';
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: document.getElementById('username').value.trim(),
+            password: document.getElementById('password').value
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Login failed');
+        localStorage.setItem('askhr-token', data.token);
+        localStorage.setItem('askhr-user', JSON.stringify(data.user));
+        window.location.href = '/';
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.hidden = false;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
+      }
+    });
+  </script>
+</body>
+</html>

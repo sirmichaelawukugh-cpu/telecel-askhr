@@ -156,6 +156,35 @@ body {
   background: rgba(255, 255, 255, 0.28);
 }
 
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-label {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12.5px;
+  font-weight: 600;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar-logout {
+  color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 12.5px;
+  padding: 5px 10px;
+}
+
+.topbar-logout:hover {
+  background: rgba(255, 255, 255, 0.25);
+  color: var(--white);
+}
+
 main {
   padding: 32px 0 64px;
 }
@@ -813,6 +842,87 @@ main {
 
 .toast.success { background: #1c7c3c; color: #fff; }
 .toast.error { background: var(--red-700); color: #fff; }
+
+/* Login page */
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--red-50), var(--gray-100) 45%),
+    radial-gradient(circle at 15% 50%, var(--red-100), transparent 40%);
+}
+
+.login-wrapper {
+  width: 100%;
+  max-width: 420px;
+  padding: 20px;
+}
+
+.login-card {
+  background: var(--panel);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 36px 32px;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.login-logo {
+  height: 56px;
+  width: 56px;
+  object-fit: cover;
+  border-radius: 14px;
+  padding: 6px;
+  background: var(--white);
+  box-shadow: 0 2px 8px rgba(125, 9, 9, 0.15);
+  margin-bottom: 14px;
+}
+
+.login-header h1 {
+  font-size: 24px;
+  color: var(--red-900);
+  margin-bottom: 4px;
+}
+
+.login-header p {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.login-page .form-field {
+  margin-bottom: 16px;
+}
+
+.login-btn {
+  width: 100%;
+  padding: 13px;
+  font-size: 15px;
+  margin-top: 4px;
+}
+
+.login-error {
+  background: var(--red-100);
+  color: var(--red-700);
+  border: 1px solid var(--red-500);
+  border-radius: 9px;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+.login-footer {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--gray-500);
+  margin-top: 20px;
+}
 
 @media (max-width: 760px) {
   .chart-grid { grid-template-columns: 1fr; }
