@@ -27,6 +27,12 @@ function applyRoleUI() {
   adminOnly.forEach(el => { el.style.display = isAdmin() ? '' : 'none'; });
   const userLabel = $('#userLabel');
   if (userLabel) userLabel.textContent = state.user ? state.user.name + ' (' + state.user.role + ')' : '';
+  if (state.user && state.user.email) {
+    const nameEl = $('#name');
+    const emailEl = $('#email');
+    if (nameEl && !nameEl.value) nameEl.value = state.user.name;
+    if (emailEl && !emailEl.value) emailEl.value = state.user.email;
+  }
 }
 
 function logout() {
@@ -176,15 +182,21 @@ function renderTickets() {
     list.innerHTML = `<div class="empty-state"><strong>No tickets found</strong>Submit a new request to get started.</div>`;
     return;
   }
+  const admin = isAdmin();
   list.innerHTML = state.tickets.map(t => {
     const statusClass = 'status-' + t.status.replace(/\s+/g, '');
-    const statusActions = t.status === 'Open'
-      ? `<button class="btn btn-sm btn-primary" data-act="start" data-id="${t.id}">Start Work</button>`
-      : t.status === 'In Progress'
-        ? `<button class="btn btn-sm btn-success" data-act="resolve" data-id="${t.id}">Mark Resolved</button>`
-        : t.status === 'Resolved'
-          ? `<button class="btn btn-sm btn-outline" data-act="close" data-id="${t.id}">Close</button>`
-          : '';
+    let statusActions = '';
+    let deleteBtn = '';
+    if (admin) {
+      statusActions = t.status === 'Open'
+        ? `<button class="btn btn-sm btn-primary" data-act="start" data-id="${t.id}">Start Work</button>`
+        : t.status === 'In Progress'
+          ? `<button class="btn btn-sm btn-success" data-act="resolve" data-id="${t.id}">Mark Resolved</button>`
+          : t.status === 'Resolved'
+            ? `<button class="btn btn-sm btn-outline" data-act="close" data-id="${t.id}">Close</button>`
+            : '';
+      deleteBtn = `<button class="btn btn-sm btn-danger" data-act="delete" data-id="${t.id}">Delete</button>`;
+    }
     return `
       <div class="ticket-card ${statusClass}">
         <div>
@@ -205,7 +217,7 @@ function renderTickets() {
         </div>
         <div class="ticket-actions">
           ${statusActions}
-          <button class="btn btn-sm btn-danger" data-act="delete" data-id="${t.id}">Delete</button>
+          ${deleteBtn}
         </div>
       </div>`;
   }).join('');
