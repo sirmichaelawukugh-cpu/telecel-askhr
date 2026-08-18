@@ -3,7 +3,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
-const { sendTicketToHR, sendConfirmationToRequester, sendStatusUpdate } = require('./lib/mailer');
+const { sendTicketToHR, sendConfirmationToRequester, sendStatusUpdate, sendStatusUpdateToHR } = require('./lib/mailer');
 const { buildTicketsWorkbook } = require('./lib/reports');
 const auth = require('./lib/auth');
 
@@ -203,6 +203,7 @@ app.patch('/api/tickets/:id', auth.authenticate, auth.requireAdmin, (req, res) =
 
   if (oldStatus !== ticket.status) {
     sendStatusUpdate(ticket, oldStatus).catch(err => console.error('[mail:status]', err.message));
+    sendStatusUpdateToHR(ticket, oldStatus).catch(err => console.error('[mail:status-hr]', err.message));
   }
 
   res.json(ticket);
