@@ -36,6 +36,7 @@ function showAdminView() {
   document.querySelectorAll('.admin-view').forEach(el => el.style.display = '');
   $('#adminNav').style.display = '';
   $('#logoutBtn').style.display = '';
+  $('#adminLoginLink').style.display = 'none';
   $('#userLabel').textContent = state.user.name + ' (admin)';
   switchView('dashboard');
 }
@@ -45,6 +46,7 @@ function showPublicView() {
   document.querySelectorAll('.admin-view').forEach(el => el.style.display = 'none');
   $('#adminNav').style.display = 'none';
   $('#logoutBtn').style.display = 'none';
+  $('#adminLoginLink').style.display = '';
   $('#userLabel').textContent = '';
 }
 

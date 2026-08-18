@@ -185,6 +185,21 @@ body {
   color: var(--white);
 }
 
+.topbar-admin-login {
+  color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 12.5px;
+  padding: 5px 12px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.topbar-admin-login:hover {
+  background: rgba(255, 255, 255, 0.25);
+  color: var(--white);
+}
+
 main {
   padding: 32px 0 64px;
 }
