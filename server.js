@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const { sendTicketToHR, sendConfirmationToRequester, sendStatusUpdate, sendStatusUpdateToHR } = require('./lib/mailer');
+const { sendTicketCreatedSMS, sendTicketResolvedSMS, sendStatusUpdateToHRSMS } = require('./lib/sms');
 const { buildTicketsWorkbook } = require('./lib/reports');
 const auth = require('./lib/auth');
 
@@ -177,6 +178,7 @@ function handleCreateTicket(req, res, files) {
 
   sendTicketToHR(ticket).catch(err => console.error('[mail:hr]', err.message));
   sendConfirmationToRequester(ticket).catch(err => console.error('[mail:req]', err.message));
+  sendTicketCreatedSMS(ticket).catch(err => console.error('[sms:create]', err.message));
 
   res.status(201).json(ticket);
 }
@@ -202,8 +204,10 @@ app.patch('/api/tickets/:id', auth.authenticate, auth.requireAdmin, (req, res) =
   if (oldStatus !== ticket.status) {
     if (ticket.status === 'Resolved' || ticket.status === 'Closed') {
       sendStatusUpdate(ticket, oldStatus).catch(err => console.error('[mail:status]', err.message));
+      sendTicketResolvedSMS(ticket).catch(err => console.error('[sms:status]', err.message));
     }
     sendStatusUpdateToHR(ticket, oldStatus).catch(err => console.error('[mail:status-hr]', err.message));
+    sendStatusUpdateToHRSMS(ticket, oldStatus).catch(err => console.error('[sms:hr]', err.message));
   }
 
   res.json(ticket);

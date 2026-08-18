@@ -25,3 +25,9 @@ services:
         value: sir.michaelawukugh@gmail.com
       - key: PORT
         value: 10000
+      - key: MNOTIFY_API_KEY
+        sync: false
+      - key: MNOTIFY_SENDER_ID
+        value: AskHR
+      - key: HR_PHONE
+        sync: false
