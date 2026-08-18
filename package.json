@@ -1,0 +1,17 @@
+{
+  "name": "hr-ticketing",
+  "version": "1.0.0",
+  "description": "HR Ticketing request webapp with red & white design",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "exceljs": "^4.4.0",
+    "express": "^4.22.2",
+    "multer": "^2.2.0",
+    "nodemailer": "^9.0.5"
+  }
+}
