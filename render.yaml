@@ -20,6 +20,6 @@ services:
       - key: MAIL_FROM
         sync: false
       - key: HR_EMAIL
-        value: sirmichaelawuku@gmail.com
+        value: sir.michaelawukugh@gmail.com
       - key: PORT
         value: 10000
