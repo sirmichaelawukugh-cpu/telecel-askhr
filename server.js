@@ -149,16 +149,17 @@ app.post('/api/tickets', (req, res) => {
 });
 
 function handleCreateTicket(req, res, files) {
-  const { name, email, department, category, subject, description, priority } = req.body;
-  if (!name || !email || !department || !subject || !description) {
+  const { name, email, phone, department, category, subject, description, priority } = req.body;
+  if (!name || !email || !phone || !department || !subject || !description) {
     if (files.length) cleanupFiles(files);
-    return res.status(400).json({ error: 'name, email, function, subject and description are required' });
+    return res.status(400).json({ error: 'name, email, phone, function, subject and description are required' });
   }
   const ticket = {
     id: nextTicketId(),
     ticketRef: 'TGH-' + Date.now().toString(36).toUpperCase().slice(-8),
     name,
     email,
+    phone,
     department,
     category: category || 'General',
     subject,
@@ -199,7 +200,9 @@ app.patch('/api/tickets/:id', auth.authenticate, auth.requireAdmin, (req, res) =
   saveTickets();
 
   if (oldStatus !== ticket.status) {
-    sendStatusUpdate(ticket, oldStatus).catch(err => console.error('[mail:status]', err.message));
+    if (ticket.status === 'Resolved' || ticket.status === 'Closed') {
+      sendStatusUpdate(ticket, oldStatus).catch(err => console.error('[mail:status]', err.message));
+    }
     sendStatusUpdateToHR(ticket, oldStatus).catch(err => console.error('[mail:status-hr]', err.message));
   }
 

@@ -167,6 +167,7 @@ async function submitTicket(e) {
   const fd = new FormData();
   fd.append('name', form.querySelector('#name').value.trim());
   fd.append('email', form.querySelector('#email').value.trim());
+  fd.append('phone', form.querySelector('#phone').value.trim());
   fd.append('department', form.querySelector('#department').value);
   fd.append('category', form.querySelector('#category').value);
   fd.append('subject', form.querySelector('#subject').value.trim());
