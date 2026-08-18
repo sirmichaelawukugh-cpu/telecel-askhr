@@ -54,9 +54,13 @@ body {
   background: var(--gray-100);
   color: var(--ink);
   min-height: 100vh;
+  min-height: 100dvh;
   transition: background 0.25s ease, color 0.25s ease;
   -webkit-tap-highlight-color: transparent;
   -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
 }
 
 .topbar {
