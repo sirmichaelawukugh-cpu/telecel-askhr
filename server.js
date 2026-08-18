@@ -86,6 +86,9 @@ app.post('/api/auth/login', (req, res) => {
   if (!user || !auth.verifyPassword(password, user.salt, user.password)) {
     return res.status(401).json({ error: 'Invalid username or password' });
   }
+  if (user.role !== 'admin') {
+    return res.status(403).json({ error: 'Access restricted to administrators only' });
+  }
   const token = auth.generateToken(user);
   res.json({ token, user: { id: user.id, username: user.username, name: user.name, role: user.role, email: user.email } });
 });
@@ -116,24 +119,18 @@ app.post('/api/users', auth.authenticate, auth.requireAdmin, (req, res) => {
 
 // ====== Tickets (authenticated) ======
 
-app.get('/api/tickets', auth.authenticate, (req, res) => {
+app.get('/api/tickets', auth.authenticate, auth.requireAdmin, (req, res) => {
   let list = applyFilters(tickets, req);
-  if (req.user.role !== 'admin') {
-    list = list.filter(t => t.email === req.user.email || t.name === req.user.name);
-  }
   res.json(list);
 });
 
-app.get('/api/tickets/:id', auth.authenticate, (req, res) => {
+app.get('/api/tickets/:id', auth.authenticate, auth.requireAdmin, (req, res) => {
   const ticket = tickets.find(t => t.id === Number(req.params.id));
   if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
-  if (req.user.role !== 'admin' && ticket.email !== req.user.email && ticket.name !== req.user.name) {
-    return res.status(403).json({ error: 'Access denied' });
-  }
   res.json(ticket);
 });
 
-app.post('/api/tickets', auth.authenticate, (req, res) => {
+app.post('/api/tickets', (req, res) => {
   const contentType = req.headers['content-type'] || '';
   if (contentType.includes('application/json')) {
     return handleCreateTicket(req, res, []);

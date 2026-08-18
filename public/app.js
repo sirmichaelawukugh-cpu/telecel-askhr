@@ -15,68 +15,45 @@ function getUser() {
 function isAdmin() { return state.user && state.user.role === 'admin'; }
 function authHeaders() { return { 'Authorization': 'Bearer ' + getToken(), 'Content-Type': 'application/json' }; }
 
-function requireAuth() {
-  if (!getToken()) { window.location.href = '/login.html'; return false; }
-  state.user = getUser();
-  applyRoleUI();
-  return true;
+function checkAuth() {
+  if (getToken()) {
+    state.user = getUser();
+    if (state.user && state.user.role === 'admin') {
+      showAdminView();
+    } else {
+      localStorage.removeItem('askhr-token');
+      localStorage.removeItem('askhr-user');
+      state.user = null;
+      showPublicView();
+    }
+  } else {
+    showPublicView();
+  }
 }
 
-function applyRoleUI() {
-  const adminOnly = document.querySelectorAll('[data-admin]');
-  adminOnly.forEach(el => { el.style.display = isAdmin() ? '' : 'none'; });
-  const userLabel = $('#userLabel');
-  if (userLabel) userLabel.textContent = state.user ? state.user.name + ' (' + state.user.role + ')' : '';
-  if (state.user && state.user.email) {
-    const nameEl = $('#name');
-    const emailEl = $('#email');
-    if (nameEl && !nameEl.value) nameEl.value = state.user.name;
-    if (emailEl && !emailEl.value) emailEl.value = state.user.email;
-  }
+function showAdminView() {
+  $('#publicView').style.display = 'none';
+  document.querySelectorAll('.admin-view').forEach(el => el.style.display = '');
+  $('#adminNav').style.display = '';
+  $('#logoutBtn').style.display = '';
+  $('#userLabel').textContent = state.user.name + ' (admin)';
+  switchView('dashboard');
+}
+
+function showPublicView() {
+  $('#publicView').style.display = '';
+  document.querySelectorAll('.admin-view').forEach(el => el.style.display = 'none');
+  $('#adminNav').style.display = 'none';
+  $('#logoutBtn').style.display = 'none';
+  $('#userLabel').textContent = '';
 }
 
 function logout() {
   localStorage.removeItem('askhr-token');
   localStorage.removeItem('askhr-user');
-  window.location.href = '/login.html';
-}
-
-/* ---------- Theme (day / night) ---------- */
-function applyTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme);
-  const btn = $('#themeToggle');
-  if (btn) btn.textContent = theme === 'dark' ? '\u2600' : '\u263E';
-  localStorage.setItem('askhr-theme', theme);
-  refreshChartColors();
-}
-
-function initTheme() {
-  const saved = localStorage.getItem('askhr-theme');
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  applyTheme(saved || (prefersDark ? 'dark' : 'light'));
-}
-
-/* ---------- Navigation ---------- */
-function switchView(view) {
-  state.currentView = view;
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  const target = document.getElementById(view === 'new' ? 'new-ticket' : view);
-  if (target) target.classList.add('active');
-  document.querySelectorAll('.nav-link').forEach(l =>
-    l.classList.toggle('active', l.dataset.view === view)
-  );
-  if (view === 'dashboard') loadStats();
-  if (view === 'tickets') loadTickets();
-  if (view === 'reports') loadAnalytics();
-}
-
-function toast(msg, type = '') {
-  const el = $('#toast');
-  el.textContent = msg;
-  el.className = 'toast ' + type;
-  el.hidden = false;
-  clearTimeout(toast._t);
-  toast._t = setTimeout(() => { el.hidden = true; }, 3200);
+  state.user = null;
+  showPublicView();
+  toast('Logged out', 'success');
 }
 
 /* ---------- API helpers ---------- */
@@ -94,34 +71,31 @@ async function api(url, options = {}) {
   return res.json();
 }
 
-function reportParams() {
-  const params = new URLSearchParams();
-  const s = $('#reportStatus').value;
-  const p = $('#reportPriority').value;
-  const d = $('#reportDepartment').value;
-  if (s) params.set('status', s);
-  if (p) params.set('priority', p);
-  if (d) params.set('department', d);
-  return params;
+/* ---------- Navigation ---------- */
+function switchView(view) {
+  state.currentView = view;
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const target = document.getElementById(view);
+  if (target) target.classList.add('active');
+
+  document.querySelectorAll('.nav-link').forEach(l => {
+    l.classList.toggle('active', l.dataset.view === view);
+  });
+
+  if (view === 'dashboard') loadStats();
+  if (view === 'tickets') loadTickets();
+  if (view === 'reports') loadAnalytics();
 }
 
 /* ---------- Dashboard ---------- */
 async function loadStats() {
-  if (!isAdmin()) {
-    $('#statTotal').textContent = '-';
-    $('#statOpen').textContent = '-';
-    $('#statProgress').textContent = '-';
-    $('#statResolved').textContent = '-';
-    $('#statClosed').textContent = '-';
-    return;
-  }
   try {
-    const s = await api('/api/stats');
-    $('#statTotal').textContent = s.total;
-    $('#statOpen').textContent = s.open;
-    $('#statProgress').textContent = s.inProgress;
-    $('#statResolved').textContent = s.resolved;
-    $('#statClosed').textContent = s.closed;
+    const stats = await api('/api/stats');
+    $('#statTotal').textContent = stats.total;
+    $('#statOpen').textContent = stats.open;
+    $('#statProgress').textContent = stats.inProgress;
+    $('#statResolved').textContent = stats.resolved;
+    $('#statClosed').textContent = stats.closed;
   } catch (e) {
     toast(e.message, 'error');
   }
@@ -144,58 +118,21 @@ async function loadTickets() {
   }
 }
 
-function esc(str) {
-  const div = document.createElement('div');
-  div.textContent = str || '';
-  return div.innerHTML;
-}
-
-function formatSize(bytes) {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-}
-
-const IMG_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico'];
-
-function renderAttachments(atts) {
-  if (!Array.isArray(atts) || !atts.length) return '';
-  return `
-    <div class="attachment-list">
-      ${atts.map(a => {
-        const isImg = IMG_EXTS.includes((a.ext || '').toLowerCase());
-        return `
-          <a class="attachment-chip" href="${esc(a.path)}" target="_blank" rel="noopener" title="Open ${esc(a.name)}">
-            ${isImg
-              ? `<img class="attachment-thumb" src="${esc(a.path)}" alt="" />`
-              : `<span class="attachment-icon">${esc(a.ext || 'file')}</span>`}
-            <span class="attachment-name">${esc(a.name)}</span>
-            <span class="attachment-size">${formatSize(a.size)}</span>
-          </a>`;
-      }).join('')}
-    </div>`;
-}
-
 function renderTickets() {
   const list = $('#ticketList');
   if (!state.tickets.length) {
     list.innerHTML = `<div class="empty-state"><strong>No tickets found</strong>Submit a new request to get started.</div>`;
     return;
   }
-  const admin = isAdmin();
   list.innerHTML = state.tickets.map(t => {
     const statusClass = 'status-' + t.status.replace(/\s+/g, '');
     let statusActions = '';
-    let deleteBtn = '';
-    if (admin) {
-      statusActions = t.status === 'Open'
-        ? `<button class="btn btn-sm btn-primary" data-act="start" data-id="${t.id}">Start Work</button>`
-        : t.status === 'In Progress'
-          ? `<button class="btn btn-sm btn-success" data-act="resolve" data-id="${t.id}">Mark Resolved</button>`
-          : t.status === 'Resolved'
-            ? `<button class="btn btn-sm btn-outline" data-act="close" data-id="${t.id}">Close</button>`
-            : '';
-      deleteBtn = `<button class="btn btn-sm btn-danger" data-act="delete" data-id="${t.id}">Delete</button>`;
+    if (t.status === 'Open') {
+      statusActions = `<button class="btn btn-sm btn-primary" data-act="start" data-id="${t.id}">Start Work</button>`;
+    } else if (t.status === 'In Progress') {
+      statusActions = `<button class="btn btn-sm btn-success" data-act="resolve" data-id="${t.id}">Mark Resolved</button>`;
+    } else if (t.status === 'Resolved') {
+      statusActions = `<button class="btn btn-sm btn-outline" data-act="close" data-id="${t.id}">Close</button>`;
     }
     return `
       <div class="ticket-card ${statusClass}">
@@ -217,238 +154,154 @@ function renderTickets() {
         </div>
         <div class="ticket-actions">
           ${statusActions}
-          ${deleteBtn}
+          <button class="btn btn-sm btn-danger" data-act="delete" data-id="${t.id}">Delete</button>
         </div>
       </div>`;
   }).join('');
 }
 
+/* ---------- Submit Ticket ---------- */
 async function submitTicket(e) {
   e.preventDefault();
+  const form = e.target;
   const fd = new FormData();
-  fd.append('name', $('#name').value.trim());
-  fd.append('email', $('#email').value.trim());
-  fd.append('department', $('#department').value);
-  fd.append('category', $('#category').value);
-  fd.append('subject', $('#subject').value.trim());
-  fd.append('description', $('#description').value.trim());
-  fd.append('priority', $('#priority').value);
-  for (const file of $('#attachments').files) {
+  fd.append('name', form.querySelector('#name').value.trim());
+  fd.append('email', form.querySelector('#email').value.trim());
+  fd.append('department', form.querySelector('#department').value);
+  fd.append('category', form.querySelector('#category').value);
+  fd.append('subject', form.querySelector('#subject').value.trim());
+  fd.append('description', form.querySelector('#description').value.trim());
+  fd.append('priority', form.querySelector('#priority').value);
+  for (const file of form.querySelector('#attachments').files) {
     fd.append('attachments', file);
   }
-  const btn = $('#ticketForm button[type="submit"]');
+  const btn = form.querySelector('button[type="submit"]');
   btn.disabled = true;
+  btn.textContent = 'Submitting...';
   try {
-    const res = await fetch('/api/tickets', { method: 'POST', body: fd, headers: { 'Authorization': 'Bearer ' + getToken() } });
+    const res = await fetch('/api/tickets', { method: 'POST', body: fd });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error || 'Request failed');
     }
     const ticket = await res.json();
-    const msg = `Ticket ${ticket.ticketRef} submitted. Confirmation email sent to ${ticket.email}` +
+    const msg = `Ticket ${ticket.ticketRef} submitted! Confirmation email sent to ${ticket.email}` +
       (ticket.attachments && ticket.attachments.length ? ` (${ticket.attachments.length} attachment${ticket.attachments.length > 1 ? 's' : ''})` : '');
     toast(msg, 'success');
-    $('#ticketForm').reset();
-    clearFileList();
-    switchView('tickets');
-    loadStats();
+    form.reset();
+    updateFileList();
+    if (isAdmin()) {
+      setTimeout(() => switchView('tickets'), 1500);
+    }
   } catch (err) {
     toast(err.message, 'error');
   } finally {
     btn.disabled = false;
+    btn.textContent = 'Submit Ticket';
   }
 }
 
-async function updateTicket(id, patch) {
+/* ---------- Ticket Actions ---------- */
+$('#ticketList').addEventListener('click', async e => {
+  const btn = e.target.closest('[data-act]');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  const act = btn.dataset.act;
+
+  if (act === 'delete') {
+    if (!confirm('Delete this ticket permanently?')) return;
+    try {
+      await api(`/api/tickets/${id}`, { method: 'DELETE' });
+      toast('Ticket deleted', 'success');
+      loadTickets();
+    } catch (err) { toast(err.message, 'error'); }
+    return;
+  }
+
+  const statusMap = { start: 'In Progress', resolve: 'Resolved', close: 'Closed' };
+  const resolution = act === 'resolve' ? prompt('Resolution note (optional):') : '';
+  if (act === 'resolve' && resolution === null) return;
   try {
     await api(`/api/tickets/${id}`, {
       method: 'PATCH',
-      body: JSON.stringify(patch)
+      body: JSON.stringify({ status: statusMap[act], resolution: resolution || '' })
     });
-    toast('Ticket updated', 'success');
+    toast(`Ticket updated to "${statusMap[act]}"`, 'success');
     loadTickets();
     loadStats();
-  } catch (err) {
-    toast(err.message, 'error');
-  }
-}
+  } catch (err) { toast(err.message, 'error'); }
+});
 
-async function deleteTicket(id) {
-  const t = state.tickets.find(x => x.id === Number(id));
-  if (!confirm(`Delete ticket ${t ? t.ticketRef : ''}? This cannot be undone.`)) return;
-  try {
-    await api(`/api/tickets/${id}`, { method: 'DELETE' });
-    toast('Ticket deleted', 'success');
-    loadTickets();
-    loadStats();
-  } catch (err) {
-    toast(err.message, 'error');
-  }
-}
-
-/* ---------- Analytics & Reports ---------- */
-const RED = { light: '#e02d2d', dark: '#ff4444' };
-const palette = ['#e02d2d', '#c11d1d', '#7f0d0d', '#ff7a7a', '#f4a0a0', '#a94444'];
-
-function chartTheme() {
-  return document.documentElement.getAttribute('data-theme') === 'dark';
-}
-
-function baseColors() {
-  const dark = chartTheme();
-  return {
-    grid: dark ? '#4a4242' : '#ece4e4',
-    label: dark ? '#b3a5a5' : '#5c5252',
-    bar: dark ? '#ff4444' : '#d92525',
-    barAlt: dark ? '#7f0d0d' : '#7f0d0d'
-  };
-}
-
-function refreshChartColors() {
-  Object.values(state.charts).forEach(c => {
-    if (!c) return;
-    const colors = baseColors();
-    c.options.scales.x.ticks.color = colors.label;
-    c.options.scales.x.grid.color = colors.grid;
-    c.options.scales.y.ticks.color = colors.label;
-    c.options.scales.y.grid.color = colors.grid;
-    c.options.plugins.legend.labels.color = colors.label;
-    c.update();
-  });
-}
-
-function makeChart(key, canvasId, config) {
-  if (state.charts[key]) {
-    state.charts[key].data = config.data;
-    state.charts[key].options = Object.assign(state.charts[key].options, config.options);
-    state.charts[key].update();
-    return state.charts[key];
-  }
-  state.charts[key] = new Chart($(canvasId), config);
-  return state.charts[key];
+/* ---------- Reports & Analytics ---------- */
+function reportParams() {
+  const p = new URLSearchParams();
+  const s = $('#reportStatus') ? $('#reportStatus').value : '';
+  const pr = $('#reportPriority') ? $('#reportPriority').value : '';
+  const d = $('#reportDepartment') ? $('#reportDepartment').value : '';
+  if (s) p.set('status', s);
+  if (pr) p.set('priority', pr);
+  if (d) p.set('department', d);
+  return p;
 }
 
 async function loadAnalytics() {
   try {
     const a = await api('/api/analytics?' + reportParams().toString());
-    const colors = baseColors();
-    const dark = chartTheme();
-
     $('#rptTotal').textContent = a.total;
-    $('#rptOpen').textContent = a.byStatus['Open'] || 0;
-    $('#rptClosed').textContent = a.byStatus['Closed'] || 0;
-    $('#rptHigh').textContent = (a.byPriority['High'] || 0) + (a.byPriority['Urgent'] || 0);
-    $('#rptAvg').textContent = a.avgResolutionDays === null ? '-' : a.avgResolutionDays;
+    $('#rptOpen').textContent = a.open;
+    $('#rptClosed').textContent = a.closed;
+    $('#rptHigh').textContent = a.highUrgent;
+    $('#rptAvg').textContent = a.avgResolutionDays != null ? a.avgResolutionDays + 'd' : '-';
+    renderCharts(a);
+  } catch (e) { toast(e.message, 'error'); }
+}
 
-    const statusData = { Open: 0, 'In Progress': 0, Resolved: 0, Closed: 0 };
-    Object.keys(statusData).forEach(k => { if (a.byStatus[k]) statusData[k] = a.byStatus[k]; });
+function chartTheme() {
+  return document.body.classList.contains('theme-light') || !document.body.classList.contains('theme-dark');
+}
 
-    makeChart('status', '#chartStatus', {
-      type: 'doughnut',
-      data: {
-        labels: Object.keys(statusData),
-        datasets: [{
-          data: Object.values(statusData),
-          backgroundColor: [RED.light, '#e0821c', '#2e9e56', '#9d9292']
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: colors.label, boxWidth: 14 } } }
-      }
-    });
+function renderCharts(a) {
+  Object.values(state.charts).forEach(c => c.destroy());
+  state.charts = {};
+  const textColor = document.body.classList.contains('theme-dark') ? '#e0d7d7' : '#4a3f3f';
+  const gridColor = document.body.classList.contains('theme-dark') ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+  const colors = { red: '#d92525', primary: '#7f0d0d', success: '#1c7c3c', warning: '#e88a1a', info: '#3b82f6', bar: ['#d92525', '#7f0d0d', '#e88a1a', '#3b82f6', '#1c7c3c'] };
+  const defaults = { color: textColor, font: { family: 'inherit' } };
+  Chart.defaults.color = textColor;
+  Chart.defaults.font.family = 'inherit';
 
-    makeChart('dept', '#chartFunction', {
-      type: 'bar',
-      data: {
-        labels: Object.keys(a.byDepartment),
-        datasets: [{ label: 'Tickets', data: Object.values(a.byDepartment), backgroundColor: colors.bar, borderRadius: 6 }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        indexAxis: 'y',
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { color: colors.label }, grid: { color: colors.grid } },
-          y: { ticks: { color: colors.label, autoSkip: false }, grid: { display: false } }
-        }
-      }
-    });
+  const pieColors = [colors.red, colors.success, colors.warning, colors.info, colors.primary];
+  state.charts.status = new Chart($('#chartStatus'), {
+    type: 'doughnut', data: { labels: Object.keys(a.byStatus), datasets: [{ data: Object.values(a.byStatus), backgroundColor: pieColors, borderWidth: 0 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 14 } } } }
+  });
 
-    makeChart('priority', '#chartPriority', {
-      type: 'pie',
-      data: {
-        labels: Object.keys(a.byPriority),
-        datasets: [{
-          data: Object.values(a.byPriority),
-          backgroundColor: ['#2e9e56', '#e0821c', RED.light, '#7f0d0d']
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: colors.label, boxWidth: 14 } } }
-      }
-    });
+  state.charts.function = new Chart($('#chartFunction'), {
+    type: 'bar', data: { labels: Object.keys(a.byDepartment), datasets: [{ label: 'Tickets', data: Object.values(a.byDepartment), backgroundColor: colors.bar, borderRadius: 6 }] },
+    options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { grid: { color: gridColor }, ticks: { stepSize: 1 } }, y: { grid: { display: false } } } }
+  });
 
-    makeChart('category', '#chartCategory', {
-      type: 'bar',
-      data: {
-        labels: Object.keys(a.byCategory),
-        datasets: [{ label: 'Tickets', data: Object.values(a.byCategory), backgroundColor: palette.slice(0, Math.max(Object.keys(a.byCategory).length, 1)), borderRadius: 6 }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        indexAxis: 'y',
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { color: colors.label }, grid: { color: colors.grid } },
-          y: { ticks: { color: colors.label, autoSkip: false }, grid: { display: false } }
-        }
-      }
-    });
+  const priorityColors = ['#60a5fa', '#e88a1a', '#d92525', '#7f0d0d'];
+  state.charts.priority = new Chart($('#chartPriority'), {
+    type: 'doughnut', data: { labels: Object.keys(a.byPriority), datasets: [{ data: Object.values(a.byPriority), backgroundColor: priorityColors, borderWidth: 0 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 14 } } } }
+  });
 
-    makeChart('trend', '#chartTrend', {
-      type: 'line',
-      data: {
-        labels: a.byDay.map(d => d.date),
-        datasets: [{
-          label: 'Requests per day',
-          data: a.byDay.map(d => d.count),
-          borderColor: RED.light,
-          backgroundColor: 'rgba(224,45,45,0.12)',
-          fill: true,
-          tension: 0.35,
-          pointRadius: 3
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: colors.label } } },
-        scales: {
-          x: { ticks: { color: colors.label }, grid: { color: colors.grid } },
-          y: { ticks: { color: colors.label }, grid: { color: colors.grid } }
-        }
-      }
-    });
-  } catch (e) {
-    toast(e.message, 'error');
-  }
+  const palette = ['#d92525', '#3b82f6', '#1c7c3c', '#e88a1a', '#7f0d0d', '#60a5fa', '#a855f7', '#ec4899', '#14b8a6'];
+  state.charts.category = new Chart($('#chartCategory'), {
+    type: 'bar', data: { labels: Object.keys(a.byCategory), datasets: [{ label: 'Tickets', data: Object.values(a.byCategory), backgroundColor: palette.slice(0, Math.max(Object.keys(a.byCategory).length, 1)), borderRadius: 6 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: gridColor }, ticks: { maxRotation: 45 } }, y: { grid: { color: gridColor }, ticks: { stepSize: 1 } } } }
+  });
+
+  state.charts.trend = new Chart($('#chartTrend'), {
+    type: 'line', data: { labels: a.trend.map(t => t.date), datasets: [{ label: 'Tickets', data: a.trend.map(t => t.count), borderColor: colors.red, backgroundColor: 'rgba(217,37,37,0.08)', fill: true, tension: 0.35, pointRadius: 4, pointBackgroundColor: colors.red }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: gridColor } }, y: { grid: { color: gridColor }, beginAtZero: true, ticks: { stepSize: 1 } } } }
+  });
 }
 
 function exportExcel() {
   const url = '/api/report/excel?' + reportParams().toString();
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'AskHR_ticket_report.xlsx';
-  a.setAttribute('data-auth-download', 'true');
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  downloadWithAuth(url, 'AskHR_ticket_report.xlsx');
   toast('Excel report downloading...', 'success');
 }
 
@@ -465,94 +318,98 @@ function downloadWithAuth(url, filename) {
     .catch(err => toast(err.message, 'error'));
 }
 
-/* ---------- Events ---------- */
-document.addEventListener('click', e => {
-  const navLink = e.target.closest('.nav-link[data-view]');
-  if (navLink) {
-    e.preventDefault();
-    return switchView(navLink.dataset.view);
+/* ---------- Theme ---------- */
+function initTheme() {
+  const saved = localStorage.getItem('askhr-theme');
+  if (saved === 'dark') {
+    document.body.classList.remove('theme-light');
+    document.body.classList.add('theme-dark');
+  } else {
+    document.body.classList.remove('theme-dark');
+    document.body.classList.add('theme-light');
   }
+  updateThemeIcon();
+}
 
-  const viewBtn = e.target.closest('[data-view-btn]');
-  if (viewBtn) return switchView(viewBtn.dataset.viewBtn);
+function applyTheme(mode) {
+  document.body.classList.remove('theme-light', 'theme-dark');
+  document.body.classList.add('theme-' + mode);
+  localStorage.setItem('askhr-theme', mode);
+  updateThemeIcon();
+}
 
-  const act = e.target.closest('[data-act]');
-  if (!act) return;
-  const id = act.dataset.id;
-  if (act.dataset.act === 'start') updateTicket(id, { status: 'In Progress' });
-  if (act.dataset.act === 'resolve') updateTicket(id, { status: 'Resolved' });
-  if (act.dataset.act === 'close') updateTicket(id, { status: 'Closed' });
-  if (act.dataset.act === 'delete') deleteTicket(id);
-});
+function updateThemeIcon() {
+  const btn = $('#themeToggle');
+  if (!btn) return;
+  btn.textContent = document.body.classList.contains('theme-dark') ? '\u{1F319}' : '\u{1F324}';
+}
 
-document.addEventListener('click', e => {
-  if (e.target.closest('[data-open-help]')) {
-    alert('The Telecel AskHR Support Desk can help with:\n\n• Leave and absence requests\n• Payroll and compensation questions\n• Benefits enrollment and changes\n• Onboarding and offboarding\n• Company policy clarification\n• IT and equipment requests\n\nSubmit a ticket and our HR team responds within 1 business day. You will receive a confirmation email with your ticket number.');
-  }
-});
+/* ---------- Toast ---------- */
+function toast(msg, type = 'success') {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + type;
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.className = 'toast'; }, 5000);
+}
 
-$('#themeToggle').addEventListener('click', () => {
-  const next = chartTheme() ? 'light' : 'dark';
-  applyTheme(next);
-});
-
-$('#brandHome').addEventListener('click', e => {
-  e.preventDefault();
-  switchView('dashboard');
-});
-
-$('#ticketForm').addEventListener('submit', submitTicket);
-$('#exportBtn').addEventListener('click', exportExcel);
-$('#refreshReportBtn').addEventListener('click', loadAnalytics);
-$('#reportStatus').addEventListener('change', loadAnalytics);
-$('#reportPriority').addEventListener('change', loadAnalytics);
-$('#reportDepartment').addEventListener('change', loadAnalytics);
+/* ---------- Escape ---------- */
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
 
 /* ---------- Attachments ---------- */
+function renderAttachments(files) {
+  if (!files || !files.length) return '';
+  return `<div class="attachments-row">${files.map(f => `<a href="${esc(f.path)}" target="_blank" class="attachment-chip" title="${esc(f.name)} (${(f.size/1024).toFixed(1)} KB)"><span class="att-icon">${attIcon(f.ext)}</span> ${esc(f.name)}</a>`).join('')}</div>`;
+}
+
+function attIcon(ext) {
+  const map = { pdf: '📄', doc: '📝', docx: '📝', xls: '📊', xlsx: '📊', ppt: '📽', pptx: '📽', png: '🖼', jpg: '🖼', jpeg: '🖼', gif: '🖼', zip: '🗜', rar: '🗜', txt: '📃', csv: '📊' };
+  return map[ext] || '📎';
+}
+
 function updateFileList() {
   const list = $('#fileList');
   const files = Array.from($('#attachments').files || []);
   if (!files.length) { list.innerHTML = ''; return; }
   list.innerHTML = files.map((f, i) => `
     <li>
-      <span class="file-name">${esc(f.name)}</span>
-      <span class="file-size">${formatSize(f.size)}</span>
-      <button type="button" class="file-remove" data-file-index="${i}" aria-label="Remove file">&times;</button>
+      <span>${attIcon(f.name.split('.').pop().toLowerCase())} ${esc(f.name)} (${(f.size / 1024).toFixed(1)} KB)</span>
+      <button type="button" data-file-idx="${i}" class="file-remove">&times;</button>
     </li>`).join('');
 }
 
-function clearFileList() {
-  $('#attachments').value = '';
-  updateFileList();
-}
-
 document.addEventListener('click', e => {
-  const removeBtn = e.target.closest('.file-remove');
-  if (!removeBtn) return;
-  const dt = new DataTransfer();
-  Array.from($('#attachments').files).forEach((f, i) => {
-    if (i !== Number(removeBtn.dataset.fileIndex)) dt.items.add(f);
+  if (e.target.dataset.fileIdx !== undefined) {
+    const input = e.target.closest('.drop-zone').querySelector('input[type=file]');
+    const dt = new DataTransfer();
+    Array.from(input.files).forEach((f, i) => { if (i !== Number(e.target.dataset.fileIdx)) dt.items.add(f); });
+    input.files = dt.files;
+    updateFileList();
+  }
+});
+
+/* ---------- Drop Zone ---------- */
+['dragenter', 'dragover'].forEach(evt => {
+  document.body.addEventListener(evt, e => {
+    e.preventDefault();
+    e.stopPropagation();
+    $('#dropZone').classList.add('drag-over');
   });
-  $('#attachments').files = dt.files;
-  updateFileList();
 });
 
-$('#attachments').addEventListener('change', updateFileList);
-
-const dropZone = $('#dropZone');
-dropZone.addEventListener('click', e => {
-  if (e.target.closest('.file-list') || e.target.closest('.file-remove')) return;
-  $('#attachments').click();
+['dragleave', 'drop'].forEach(evt => {
+  document.body.addEventListener(evt, e => {
+    e.preventDefault();
+    e.stopPropagation();
+    $('#dropZone').classList.remove('drag-over');
+  });
 });
-['dragenter', 'dragover'].forEach(ev => dropZone.addEventListener(ev, e => {
-  e.preventDefault();
-  dropZone.classList.add('dragging');
-}));
-['dragleave', 'drop'].forEach(ev => dropZone.addEventListener(ev, e => {
-  e.preventDefault();
-  dropZone.classList.remove('dragging');
-}));
-dropZone.addEventListener('drop', e => {
+
+document.body.addEventListener('drop', e => {
   const dt = e.dataTransfer;
   if (!dt || !dt.files || !dt.files.length) return;
   const merged = new DataTransfer();
@@ -562,17 +419,49 @@ dropZone.addEventListener('drop', e => {
   updateFileList();
 });
 
-let searchTimer;
-$('#searchBox').addEventListener('input', () => {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(loadTickets, 300);
+/* ---------- Event Listeners ---------- */
+document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
+  checkAuth();
 });
-$('#filterStatus').addEventListener('change', loadTickets);
-$('#filterPriority').addEventListener('change', loadTickets);
+
+$('#brandHome').addEventListener('click', e => {
+  e.preventDefault();
+  if (isAdmin()) switchView('dashboard');
+  else window.location.href = '/';
+});
+
+$('#themeToggle').addEventListener('click', () => {
+  const next = document.body.classList.contains('theme-dark') ? 'light' : 'dark';
+  applyTheme(next);
+});
 
 $('#logoutBtn').addEventListener('click', logout);
 
-if (!requireAuth()) { throw new Error('Not authenticated'); }
+document.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', e => {
+    e.preventDefault();
+    switchView(link.dataset.view);
+  });
+});
 
-initTheme();
-loadStats();
+document.querySelectorAll('[data-view-btn]').forEach(btn => {
+  btn.addEventListener('click', () => switchView(btn.dataset.viewBtn));
+});
+
+$('#ticketForm').addEventListener('submit', submitTicket);
+$('#ticketFormAdmin').addEventListener('submit', submitTicket);
+
+$('#exportBtn').addEventListener('click', exportExcel);
+$('#refreshReportBtn').addEventListener('click', loadAnalytics);
+$('#reportStatus') && $('#reportStatus').addEventListener('change', loadAnalytics);
+$('#reportPriority') && $('#reportPriority').addEventListener('change', loadAnalytics);
+$('#reportDepartment') && $('#reportDepartment').addEventListener('change', loadAnalytics);
+
+let searchTimer;
+$('#searchBox') && $('#searchBox').addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(loadTickets, 300);
+});
+$('#filterStatus') && $('#filterStatus').addEventListener('change', loadTickets);
+$('#filterPriority') && $('#filterPriority').addEventListener('change', loadTickets);

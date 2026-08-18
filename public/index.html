@@ -3,77 +3,41 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Telecel AskHR - Ticketing Request</title>
+  <title>Telecel AskHR - HR Ticketing Platform</title>
   <link rel="icon" type="image/png" href="telecel-logo.png" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
 <body>
-  <header class="topbar">
+  <header class="topbar" id="topbar">
     <div class="container topbar-inner">
-      <a href="#dashboard" id="brandHome" class="brand" title="Go to Dashboard">
+      <a href="#dashboard" id="brandHome" class="brand" title="Telecel Ghana AskHR">
         <img src="telecel-logo.png" alt="Telecel Ghana logo" class="brand-logo" />
         <span class="brand-name">AskHR
           <span class="brand-sub">Employee Support Desk</span>
         </span>
       </a>
-      <nav class="nav">
+      <nav class="nav" id="adminNav">
         <a href="#dashboard" class="nav-link active" data-view="dashboard">Dashboard</a>
         <a href="#new-ticket" class="nav-link" data-view="new">New Request</a>
-        <a href="#tickets" class="nav-link" data-view="tickets">My Tickets</a>
-        <a href="#reports" class="nav-link" data-view="reports" data-admin>Reports</a>
+        <a href="#tickets" class="nav-link" data-view="tickets">All Tickets</a>
+        <a href="#reports" class="nav-link" data-view="reports">Reports</a>
       </nav>
       <div class="topbar-right">
         <span id="userLabel" class="user-label"></span>
-        <button id="logoutBtn" class="btn btn-sm btn-outline topbar-logout">Logout</button>
+        <button id="logoutBtn" class="btn btn-sm btn-outline topbar-logout" style="display:none">Logout</button>
         <button id="themeToggle" class="theme-toggle" title="Toggle day / night theme" aria-label="Toggle theme">&#127774;</button>
       </div>
     </div>
   </header>
 
   <main class="container">
-    <section id="dashboard" class="view active">
+    <!-- PUBLIC: Submit a ticket (no login required) -->
+    <section id="publicView">
       <div class="hero">
         <div class="hero-badge">&#10004; Telecel Ghana AskHR</div>
-        <h1>Welcome to the HR Support Desk</h1>
-        <p>Submit an HR request, track its progress, and get your questions answered. Our team responds within one business day.</p>
-        <div class="hero-actions">
-          <button class="btn btn-primary" data-view-btn="new">Submit a Request</button>
-          <button class="btn btn-outline" data-view-btn="tickets">View My Tickets</button>
-        </div>
-      </div>
-
-      <div class="stats-grid" id="statsGrid">
-        <div class="stat-card"><span class="stat-value" id="statTotal">0</span><span class="stat-label">Total Tickets</span></div>
-        <div class="stat-card"><span class="stat-value" id="statOpen">0</span><span class="stat-label">Open</span></div>
-        <div class="stat-card"><span class="stat-value" id="statProgress">0</span><span class="stat-label">In Progress</span></div>
-        <div class="stat-card"><span class="stat-value" id="statResolved">0</span><span class="stat-label">Resolved</span></div>
-        <div class="stat-card"><span class="stat-value" id="statClosed">0</span><span class="stat-label">Closed</span></div>
-      </div>
-
-      <div class="quick-actions">
-        <h2>Quick Actions</h2>
-        <div class="quick-grid">
-          <button class="quick-card" data-view-btn="new">
-            <strong>Submit an HR Request</strong>
-            <span>Leave, payroll, benefits, onboarding and more</span>
-          </button>
-          <button class="quick-card" data-view-btn="reports">
-            <strong>Reports &amp; Analytics</strong>
-            <span>View dashboards and export Excel reports</span>
-          </button>
-          <button class="quick-card" data-open-help>
-            <strong>Need Help?</strong>
-            <span>See what the HR team can assist you with</span>
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <section id="new-ticket" class="view">
-      <div class="page-head">
-        <h2>Submit an HR Request</h2>
-        <p>Fill in the form below. You will receive a confirmation email with your ticket number, and the HR support team will be notified automatically.</p>
+        <h1>Employee HR Support Desk</h1>
+        <p>Submit an HR request and our support team will respond within one business day. You'll receive a confirmation email with your ticket number.</p>
       </div>
       <form id="ticketForm" class="card form-grid" autocomplete="off">
         <div class="form-field">
@@ -156,17 +120,143 @@
         </div>
         <div class="form-actions full">
           <button type="submit" class="btn btn-primary">Submit Ticket</button>
+          <a href="/login.html" class="btn btn-outline">Admin Login</a>
+        </div>
+      </form>
+    </section>
+
+    <!-- ADMIN ONLY: Dashboard -->
+    <section id="dashboard" class="view admin-view" style="display:none">
+      <div class="hero">
+        <div class="hero-badge">&#10004; Telecel Ghana AskHR</div>
+        <h1>HR Admin Dashboard</h1>
+        <p>Manage tickets, track progress, and respond to employee requests.</p>
+        <div class="hero-actions">
+          <button class="btn btn-primary" data-view-btn="new">New Request</button>
+          <button class="btn btn-outline" data-view-btn="tickets">View All Tickets</button>
+        </div>
+      </div>
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card"><span class="stat-value" id="statTotal">0</span><span class="stat-label">Total Tickets</span></div>
+        <div class="stat-card"><span class="stat-value" id="statOpen">0</span><span class="stat-label">Open</span></div>
+        <div class="stat-card"><span class="stat-value" id="statProgress">0</span><span class="stat-label">In Progress</span></div>
+        <div class="stat-card"><span class="stat-value" id="statResolved">0</span><span class="stat-label">Resolved</span></div>
+        <div class="stat-card"><span class="stat-value" id="statClosed">0</span><span class="stat-label">Closed</span></div>
+      </div>
+      <div class="quick-actions">
+        <h2>Quick Actions</h2>
+        <div class="quick-grid">
+          <button class="quick-card" data-view-btn="new">
+            <strong>Submit an HR Request</strong>
+            <span>Leave, payroll, benefits, onboarding and more</span>
+          </button>
+          <button class="quick-card" data-view-btn="reports">
+            <strong>Reports &amp; Analytics</strong>
+            <span>View dashboards and export Excel reports</span>
+          </button>
+          <button class="quick-card" data-open-help>
+            <strong>Need Help?</strong>
+            <span>See what the HR team can assist you with</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADMIN ONLY: New Ticket -->
+    <section id="new-ticket" class="view admin-view" style="display:none">
+      <div class="page-head">
+        <h2>Submit an HR Request</h2>
+        <p>Fill in the form below. A confirmation email will be sent to the requestor, and HR will be notified automatically.</p>
+      </div>
+      <form id="ticketFormAdmin" class="card form-grid" autocomplete="off">
+        <div class="form-field">
+          <label for="name">Full Name *</label>
+          <input type="text" id="name" required placeholder="Jane Doe" />
+        </div>
+        <div class="form-field">
+          <label for="email">Work Email *</label>
+          <input type="email" id="email" required placeholder="jane.doe@telecelgh.com" />
+        </div>
+        <div class="form-field">
+          <label for="department">Function *</label>
+          <select id="department" required>
+            <option value="">Select function</option>
+            <option>CEO's Office</option>
+            <option>COO's Office</option>
+            <option>Enterprise Business Unit</option>
+            <option>Consumer Business Unit</option>
+            <option>Commercial Operations</option>
+            <option>External Affairs</option>
+            <option>Legal</option>
+            <option>Human Resource Management</option>
+            <option>Finance</option>
+            <option>Technology</option>
+            <option>Sales &amp; Distribution</option>
+            <option>Telecel Cash &amp; Digital Transformation</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="category">Category</label>
+          <select id="category">
+            <option>General</option>
+            <option>Leave Request</option>
+            <option>Payroll Compensation &amp; Benefits</option>
+            <option>Pensions</option>
+            <option>Onboarding</option>
+            <option>Offboarding</option>
+            <option>Career &amp; Performance</option>
+            <option>Policy Question</option>
+            <option>Working Tools and Devices</option>
+            <option>Staff Offer Request</option>
+            <option>Fixed Broadband</option>
+            <option>Gift Declaration</option>
+            <option>Change Salary Account</option>
+            <option>GLICO Card Replacement</option>
+            <option>Data SIM Request</option>
+            <option>Mifi Device Request</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="subject">Subject *</label>
+          <input type="text" id="subject" required placeholder="Brief summary of your request" />
+        </div>
+        <div class="form-field">
+          <label for="priority">Priority</label>
+          <select id="priority">
+            <option>Low</option>
+            <option selected>Medium</option>
+            <option>High</option>
+            <option>Urgent</option>
+          </select>
+        </div>
+        <div class="form-field full">
+          <label for="description">Description *</label>
+          <textarea id="description" rows="5" required placeholder="Describe your request in detail..."></textarea>
+        </div>
+        <div class="form-field full">
+          <label for="attachments">Attachments</label>
+          <div class="drop-zone" id="dropZone">
+            <input type="file" id="attachments" multiple
+              accept=".png,.jpg,.jpeg,.gif,.webp,.bmp,.svg,.ico,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.csv,.odt,.ods,.zip,.rar,.7z,.msg,.eml"
+              title="Attach files" />
+            <p><strong>Drop files here</strong> or click to browse</p>
+            <p class="drop-hint">PDF, Word, Excel, PowerPoint, images, text and archives - up to 10 MB each (max 10 files)</p>
+            <ul id="fileList" class="file-list"></ul>
+          </div>
+        </div>
+        <div class="form-actions full">
+          <button type="submit" class="btn btn-primary">Submit Ticket</button>
           <button type="button" class="btn btn-outline" data-view-btn="dashboard">Cancel</button>
         </div>
       </form>
     </section>
 
-    <section id="tickets" class="view">
+    <!-- ADMIN ONLY: All Tickets -->
+    <section id="tickets" class="view admin-view" style="display:none">
       <div class="page-head">
-        <h2>Ticket Requests</h2>
+        <h2>All Tickets</h2>
         <p>Search, filter and manage all HR requests.</p>
       </div>
-
       <div class="toolbar">
         <input type="search" id="searchBox" placeholder="Search by ticket number, subject, name or description..." />
         <select id="filterStatus">
@@ -184,16 +274,15 @@
           <option>Urgent</option>
         </select>
       </div>
-
       <div id="ticketList" class="ticket-list"></div>
     </section>
 
-    <section id="reports" class="view">
+    <!-- ADMIN ONLY: Reports -->
+    <section id="reports" class="view admin-view" style="display:none">
       <div class="page-head">
         <h2>Reports &amp; Analytics</h2>
         <p>Track HR request performance and export Excel reports.</p>
       </div>
-
       <div class="report-toolbar">
         <div class="form-field">
           <label for="reportStatus">Status</label>
@@ -238,7 +327,6 @@
           <button id="refreshReportBtn" class="btn btn-outline">Refresh</button>
         </div>
       </div>
-
       <div class="kpi-row">
         <div class="kpi"><span class="kpi-value" id="rptTotal">0</span><div class="kpi-label">Total Tickets</div></div>
         <div class="kpi"><span class="kpi-value" id="rptOpen">0</span><div class="kpi-label">Open</div></div>
@@ -246,7 +334,6 @@
         <div class="kpi"><span class="kpi-value" id="rptHigh">0</span><div class="kpi-label">High / Urgent</div></div>
         <div class="kpi"><span class="kpi-value" id="rptAvg">-</span><div class="kpi-label">Avg Resolution (days)</div></div>
       </div>
-
       <div class="chart-grid">
         <div class="chart-card">
           <h3>Status Distribution</h3>
