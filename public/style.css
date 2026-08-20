@@ -1040,6 +1040,15 @@ main {
     margin-top: 12px;
     padding-top: 12px;
     border-top: 1px solid var(--border);
+    gap: 6px;
+  }
+
+  .ticket-actions .btn {
+    flex: 1 1 calc(50% - 3px);
+    min-height: 42px;
+    font-size: 13px;
+    text-align: center;
+    touch-action: manipulation;
   }
 
   .report-toolbar {
@@ -1168,6 +1177,11 @@ main {
 
   .ticket-tags {
     flex-wrap: wrap;
+  }
+
+  .ticket-actions .btn {
+    flex: 1 1 100%;
+    min-height: 44px;
   }
 
   .login-wrapper {
