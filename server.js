@@ -176,8 +176,8 @@ async function handleCreateTicket(req, res, files) {
       attachments: files
     });
 
-    sendTicketToHR(ticket.toObject()).catch(err => console.error('[mail:hr]', err.message));
-    sendConfirmationToRequester(ticket.toObject()).catch(err => console.error('[mail:req]', err.message));
+    sendTicketToHR(ticket.toObject()).then(() => console.log('[mail:hr] Notification sent for', ticket.ticketRef)).catch(err => console.error('[mail:hr] FAILED:', err.message));
+    sendConfirmationToRequester(ticket.toObject()).then(() => console.log('[mail:req] Confirmation sent to', ticket.email)).catch(err => console.error('[mail:req] FAILED:', err.message));
     sendTicketCreatedSMS(ticket.toObject()).catch(err => console.error('[sms:create]', err.message));
 
     res.status(201).json(ticket);
