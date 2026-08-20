@@ -300,11 +300,7 @@ async function start() {
     console.error('MONGODB_URI is not set. Please configure it in your environment.');
     process.exit(1);
   }
-  let dbUri = MONGODB_URI;
-  if (!dbUri.includes('/askhr')) {
-    dbUri = dbUri.replace('/?', '/askhr?').replace(/\/$/, '') + (dbUri.includes('?') ? '' : '/askhr');
-  }
-  await mongoose.connect(dbUri);
+  await mongoose.connect(MONGODB_URI, { dbName: 'askhr' });
   console.log('[db] Connected to MongoDB Atlas');
   await auth.seedDefaultUsers();
   app.listen(PORT, () => {
