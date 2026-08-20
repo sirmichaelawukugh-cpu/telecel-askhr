@@ -6,7 +6,7 @@ const path = require('path');
 const multer = require('multer');
 const Ticket = require('./models/Ticket');
 const { sendTicketToHR, sendConfirmationToRequester, sendStatusUpdate, sendStatusUpdateToHR } = require('./lib/mailer');
-const { sendTicketCreatedSMS, sendTicketResolvedSMS, sendStatusUpdateToHRSMS } = require('./lib/sms');
+
 const { buildTicketsWorkbook } = require('./lib/reports');
 const auth = require('./lib/auth');
 
@@ -178,7 +178,6 @@ async function handleCreateTicket(req, res, files) {
 
     sendTicketToHR(ticket.toObject()).then(() => console.log('[mail:hr] Notification sent for', ticket.ticketRef)).catch(err => console.error('[mail:hr] FAILED:', err.message));
     sendConfirmationToRequester(ticket.toObject()).then(() => console.log('[mail:req] Confirmation sent to', ticket.email)).catch(err => console.error('[mail:req] FAILED:', err.message));
-    sendTicketCreatedSMS(ticket.toObject()).catch(err => console.error('[sms:create]', err.message));
 
     res.status(201).json(ticket);
   } catch (err) {
@@ -209,10 +208,8 @@ app.patch('/api/tickets/:id', auth.authenticate, auth.requireAdmin, async (req, 
       const tObj = ticket.toObject();
       if (ticket.status === 'Resolved' || ticket.status === 'Closed') {
         sendStatusUpdate(tObj, oldStatus).catch(err => console.error('[mail:status]', err.message));
-        sendTicketResolvedSMS(tObj).catch(err => console.error('[sms:status]', err.message));
       }
       sendStatusUpdateToHR(tObj, oldStatus).catch(err => console.error('[mail:status-hr]', err.message));
-      sendStatusUpdateToHRSMS(tObj, oldStatus).catch(err => console.error('[sms:hr]', err.message));
     }
 
     res.json(ticket);
@@ -308,9 +305,6 @@ async function start() {
     console.log(`Telecel AskHR running at http://localhost:${PORT}`);
     if (!process.env.SMTP_HOST) {
       console.log('  [mail] SMTP not configured - email notifications are DISABLED.');
-    }
-    if (!process.env.ARKESEL_API_KEY) {
-      console.log('  [sms] ARKESEL_API_KEY not set - SMS notifications are DISABLED.');
     }
   });
 }

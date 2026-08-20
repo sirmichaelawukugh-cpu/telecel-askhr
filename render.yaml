@@ -25,11 +25,5 @@ services:
         value: "Telecel AskHR <sir.michaelawukugh@gmail.com>"
       - key: HR_EMAIL
         value: sir.michaelawukugh@gmail.com
-      - key: HR_PHONE
-        value: ""
-      - key: ARKESEL_API_KEY
-        value: ""
-      - key: ARKESEL_SENDER_ID
-        value: AskHR
       - key: PORT
         value: 10000
