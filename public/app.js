@@ -128,13 +128,14 @@ function renderTickets() {
   }
   list.innerHTML = state.tickets.map(t => {
     const statusClass = 'status-' + t.status.replace(/\s+/g, '');
+    const tid = t._id;
     let statusActions = '';
     if (t.status === 'Open') {
-      statusActions = `<button class="btn btn-sm btn-primary" data-act="start" data-id="${t.id}">Start Work</button>`;
+      statusActions = `<button class="btn btn-sm btn-primary" data-act="start" data-id="${tid}">Start Work</button>`;
     } else if (t.status === 'In Progress') {
-      statusActions = `<button class="btn btn-sm btn-success" data-act="resolve" data-id="${t.id}">Mark Resolved</button>`;
+      statusActions = `<button class="btn btn-sm btn-success" data-act="resolve" data-id="${tid}">Mark Resolved</button>`;
     } else if (t.status === 'Resolved') {
-      statusActions = `<button class="btn btn-sm btn-outline" data-act="close" data-id="${t.id}">Close</button>`;
+      statusActions = `<button class="btn btn-sm btn-outline" data-act="close" data-id="${tid}">Close</button>`;
     }
     return `
       <div class="ticket-card ${statusClass}">
@@ -156,7 +157,7 @@ function renderTickets() {
         </div>
         <div class="ticket-actions">
           ${statusActions}
-          <button class="btn btn-sm btn-danger" data-act="delete" data-id="${t.id}">Delete</button>
+          <button class="btn btn-sm btn-danger" data-act="delete" data-id="${tid}">Delete</button>
         </div>
       </div>`;
   }).join('');
@@ -296,8 +297,9 @@ function renderCharts(a) {
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: gridColor }, ticks: { maxRotation: 45 } }, y: { grid: { color: gridColor }, ticks: { stepSize: 1 } } } }
   });
 
+  const trend = a.trend || a.byDay || [];
   state.charts.trend = new Chart($('#chartTrend'), {
-    type: 'line', data: { labels: a.trend.map(t => t.date), datasets: [{ label: 'Tickets', data: a.trend.map(t => t.count), borderColor: colors.red, backgroundColor: 'rgba(217,37,37,0.08)', fill: true, tension: 0.35, pointRadius: 4, pointBackgroundColor: colors.red }] },
+    type: 'line', data: { labels: trend.map(t => t.date), datasets: [{ label: 'Tickets', data: trend.map(t => t.count), borderColor: colors.red, backgroundColor: 'rgba(217,37,37,0.08)', fill: true, tension: 0.35, pointRadius: 4, pointBackgroundColor: colors.red }] },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: gridColor } }, y: { grid: { color: gridColor }, beginAtZero: true, ticks: { stepSize: 1 } } } }
   });
 }
