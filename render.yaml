@@ -10,25 +10,25 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: MONGODB_URI
-        sync: false
+        value: mongodb+srv://askhr_admin:Tettey1234%24%24@cluster0.w8qlyh5.mongodb.net/askhr?retryWrites=true&w=majority
       - key: SMTP_HOST
-        sync: false
+        value: smtp.gmail.com
       - key: SMTP_PORT
         value: 587
       - key: SMTP_SECURE
-        value: false
+        value: "false"
       - key: SMTP_USER
-        sync: false
+        value: sir.michaelawukugh@gmail.com
       - key: SMTP_PASS
-        sync: false
+        value: prti zojv ywoe ttwv
       - key: MAIL_FROM
-        sync: false
+        value: "Telecel AskHR <sir.michaelawukugh@gmail.com>"
       - key: HR_EMAIL
         value: sir.michaelawukugh@gmail.com
       - key: HR_PHONE
-        sync: false
+        value: ""
       - key: ARKESEL_API_KEY
-        sync: false
+        value: ""
       - key: ARKESEL_SENDER_ID
         value: AskHR
       - key: PORT
