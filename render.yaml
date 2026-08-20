@@ -29,5 +29,9 @@ services:
         sync: false
       - key: MNOTIFY_SENDER_ID
         value: AskHR
+      - key: ARKESEL_API_KEY
+        sync: false
+      - key: ARKESEL_SENDER_ID
+        value: AskHR
       - key: HR_PHONE
         sync: false
