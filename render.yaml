@@ -8,9 +8,7 @@ services:
     startCommand: node server.js
     envVars:
       - key: JWT_SECRET
-        generateValue: true
-      - key: MONGODB_URI
-        value: mongodb+srv://askhr_admin:Tettey1234%24%24@cluster0.w8qlyh5.mongodb.net/askhr?retryWrites=true&w=majority
+        value: telecel-askhr-jwt-secret-2024
       - key: SMTP_HOST
         value: smtp.gmail.com
       - key: SMTP_PORT
