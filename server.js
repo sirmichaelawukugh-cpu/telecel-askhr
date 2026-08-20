@@ -297,6 +297,11 @@ async function start() {
     console.error('MONGODB_URI is not set. Please configure it in your environment.');
     process.exit(1);
   }
+  console.log('[env] Checking environment variables...');
+  ['MONGODB_URI', 'JWT_SECRET', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS', 'MAIL_FROM', 'HR_EMAIL'].forEach(k => {
+    const v = process.env[k];
+    console.log(`[env] ${k} = ${v ? (k.includes('PASS') || k.includes('URI') ? v.slice(0, 20) + '...' : v) : 'NOT SET'}`);
+  });
   console.log('[db] Connecting to MongoDB Atlas...');
   await mongoose.connect(MONGODB_URI);
   console.log('[db] Connected to MongoDB Atlas');
