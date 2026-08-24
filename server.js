@@ -231,7 +231,7 @@ app.get('/api/stats', auth.authenticate, auth.requireAdmin, async (req, res) => 
 app.get('/api/analytics', auth.authenticate, auth.requireAdmin, async (req, res) => {
   try {
     const tickets = await Ticket.find(buildQuery(req)).lean();
-    const byStatus = {}, byDepartment = {}, byPriority = {}, byCategory = {}, byDay = {};
+    const byStatus = {}, byDepartment = {}, byPriority = {}, byCategory = {}, byDay = {}, byMonth = {}, byFunctionCategory = {};
     tickets.forEach(t => {
       byStatus[t.status] = (byStatus[t.status] || 0) + 1;
       byDepartment[t.department] = (byDepartment[t.department] || 0) + 1;
@@ -239,15 +239,80 @@ app.get('/api/analytics', auth.authenticate, auth.requireAdmin, async (req, res)
       byCategory[t.category] = (byCategory[t.category] || 0) + 1;
       const day = new Date(t.createdAt).toISOString().slice(0, 10);
       byDay[day] = (byDay[day] || 0) + 1;
+      const month = new Date(t.createdAt).toISOString().slice(0, 7);
+      byMonth[month] = (byMonth[month] || 0) + 1;
+      const key = t.department + '||' + t.category;
+      byFunctionCategory[key] = (byFunctionCategory[key] || 0) + 1;
     });
     const resolved = tickets.filter(t => t.status === 'Resolved' || t.status === 'Closed');
+    const open = tickets.filter(t => t.status === 'Open');
+    const inProgress = tickets.filter(t => t.status === 'In Progress');
     const avgDays = resolved.length
       ? Math.round((resolved.reduce((s, t) => s + (new Date(t.updatedAt) - new Date(t.createdAt)) / 86400000, 0) / resolved.length) * 10) / 10
       : null;
+
+    const topCategory = Object.entries(byCategory).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const topDepartment = Object.entries(byDepartment).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const topFunctionCategory = Object.entries(byFunctionCategory).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => {
+      const [fn, cat] = k.split('||');
+      return { function: fn, category: cat, count: v };
+    });
+    const resolutionRate = tickets.length ? Math.round((resolved.length / tickets.length) * 100) : 0;
+    const daysArr = Object.keys(byDay).sort();
+    const busiestDay = daysArr.length ? daysArr.reduce((a, b) => byDay[a] > byDay[b] ? a : b) : null;
+    const busiestDayCount = busiestDay ? byDay[busiestDay] : 0;
+    const trendArr = Object.keys(byDay).sort().map(d => ({ date: d, count: byDay[d] }));
+    const prevMonth = tickets.filter(t => {
+      const d = new Date(t.createdAt);
+      const now = new Date();
+      const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      return d >= prev && d < new Date(now.getFullYear(), now.getMonth(), 1);
+    });
+    const thisMonth = tickets.filter(t => {
+      const d = new Date(t.createdAt);
+      const now = new Date();
+      return d >= new Date(now.getFullYear(), now.getMonth(), 1);
+    });
+    const monthOverMonth = prevMonth.length ? Math.round(((thisMonth.length - prevMonth.length) / prevMonth.length) * 100) : null;
+
+    const insights = [];
+    if (resolutionRate < 50 && tickets.length > 5) {
+      insights.push({ type: 'warning', text: `Resolution rate is ${resolutionRate}%. More than half of all tickets remain unresolved. Consider increasing HR team capacity or streamlining workflows.` });
+    } else if (resolutionRate >= 80) {
+      insights.push({ type: 'success', text: `Strong resolution rate of ${resolutionRate}%. The HR team is effectively handling requests.` });
+    }
+    if (avgDays != null && avgDays > 7) {
+      insights.push({ type: 'warning', text: `Average resolution time is ${avgDays} days. Consider prioritising overdue tickets to reduce wait times.` });
+    } else if (avgDays != null && avgDays <= 2) {
+      insights.push({ type: 'success', text: `Excellent average resolution time of ${avgDays} days. Tickets are being resolved quickly.` });
+    }
+    if (open.length > inProgress.length * 2 && open.length > 5) {
+      insights.push({ type: 'warning', text: `${open.length} tickets are still open. Many requests may be waiting too long for initial response.` });
+    }
+    if (topCategory.length) {
+      insights.push({ type: 'info', text: `Most common request: "${topCategory[0][0]}" with ${topCategory[0][1]} ticket${topCategory[0][1] > 1 ? 's' : ''}. Consider creating self-service resources for this category.` });
+    }
+    if (topDepartment.length && topDepartment[0][1] > tickets.length * 0.3) {
+      insights.push({ type: 'info', text: `"${topDepartment[0][0]}" accounts for ${topDepartment[0][1]} of ${tickets.length} tickets (${Math.round(topDepartment[0][1] / tickets.length * 100)}%). Consider targeted HR support for this function.` });
+    }
+    if (monthOverMonth !== null) {
+      if (monthOverMonth > 25) {
+        insights.push({ type: 'warning', text: `Ticket volume increased ${monthOverMonth}% from last month. Monitor workload to prevent backlogs.` });
+      } else if (monthOverMonth < -25) {
+        insights.push({ type: 'success', text: `Ticket volume decreased ${Math.abs(monthOverMonth)}% from last month.` });
+      }
+    }
+    if (!insights.length) {
+      insights.push({ type: 'info', text: 'Submit more tickets to generate actionable insights and recommendations.' });
+    }
+
     res.json({
-      total: tickets.length, byStatus, byDepartment, byPriority, byCategory,
-      byDay: Object.keys(byDay).sort().map(d => ({ date: d, count: byDay[d] })),
-      avgResolutionDays: avgDays
+      total: tickets.length, openCount: open.length, inProgressCount: inProgress.length,
+      resolvedCount: resolved.length, closedCount: (byStatus.Closed || 0),
+      byStatus, byDepartment, byPriority, byCategory,
+      byDay: trendArr, byMonth: Object.keys(byMonth).sort().map(m => ({ month: m, count: byMonth[m] })),
+      avgResolutionDays: avgDays, resolutionRate, busiestDay, busiestDayCount,
+      topCategory, topDepartment, topFunctionCategory, monthOverMonth, insights
     });
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });

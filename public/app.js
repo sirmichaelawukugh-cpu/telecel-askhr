@@ -253,11 +253,55 @@ async function loadAnalytics() {
   try {
     const a = await api('/api/analytics?' + reportParams().toString());
     $('#rptTotal').textContent = a.total;
-    $('#rptOpen').textContent = a.open;
-    $('#rptClosed').textContent = a.closed;
+    $('#rptOpen').textContent = a.openCount;
+    $('#rptClosed').textContent = a.closedCount;
     $('#rptAvg').textContent = a.avgResolutionDays != null ? a.avgResolutionDays + 'd' : '-';
+    $('#rptResolutionRate').textContent = a.resolutionRate + '%';
+    if (a.monthOverMonth !== null && a.monthOverMonth !== undefined) {
+      const arrow = a.monthOverMonth > 0 ? '\u25B2' : a.monthOverMonth < 0 ? '\u25BC' : '';
+      $('#rptTrend').textContent = (a.monthOverMonth > 0 ? '+' : '') + a.monthOverMonth + '% ' + arrow;
+      $('#rptTrend').className = 'kpi-value ' + (a.monthOverMonth > 0 ? 'trend-up' : a.monthOverMonth < 0 ? 'trend-down' : '');
+    } else {
+      $('#rptTrend').textContent = '-';
+    }
+    renderExecutiveSummary(a);
+    renderInsights(a.insights || []);
     renderCharts(a);
   } catch (e) { toast(e.message, 'error'); }
+}
+
+function renderExecutiveSummary(a) {
+  const statusLine = `<p><strong>${a.total}</strong> total ticket${a.total !== 1 ? 's' : ''} submitted. <strong>${a.resolvedCount + a.closedCount}</strong> resolved/closed, <strong>${a.openCount}</strong> open, <strong>${a.inProgressCount}</strong> in progress.</p>`;
+  const avgLine = a.avgResolutionDays != null
+    ? `<p>Average resolution time: <strong>${a.avgResolutionDays} day${a.avgResolutionDays !== 1 ? 's' : ''}</strong>. Resolution rate: <strong>${a.resolutionRate}%</strong>.</p>`
+    : '<p>No resolved tickets yet to calculate average resolution time.</p>';
+  const busiestLine = a.busiestDay ? `<p>Busiest submission day: <strong>${a.busiestDay}</strong> (${a.busiestDayCount} ticket${a.busiestDayCount !== 1 ? 's' : ''}).</p>` : '';
+  $('#summaryOverview').innerHTML = statusLine + avgLine + busiestLine;
+
+  if (a.topDepartment && a.topDepartment.length) {
+    $('#summaryTopFunctions').innerHTML = '<ol class="summary-list">' +
+      a.topDepartment.map(([fn, count]) => `<li><strong>${esc(fn)}</strong> &mdash; ${count} ticket${count !== 1 ? 's' : ''} <span class="bar-inline">${'<span class="bar-fill" style="width:' + Math.round(count / a.topDepartment[0][1] * 100) + '%"></span>'}</span></li>`).join('') +
+      '</ol>';
+  } else {
+    $('#summaryTopFunctions').innerHTML = '<p>No data available.</p>';
+  }
+
+  if (a.topCategory && a.topCategory.length) {
+    $('#summaryTopCategories').innerHTML = '<ol class="summary-list">' +
+      a.topCategory.map(([cat, count]) => `<li><strong>${esc(cat)}</strong> &mdash; ${count} ticket${count !== 1 ? 's' : ''} <span class="bar-inline">${'<span class="bar-fill" style="width:' + Math.round(count / a.topCategory[0][1] * 100) + '%"></span>'}</span></li>`).join('') +
+      '</ol>';
+  } else {
+    $('#summaryTopCategories').innerHTML = '<p>No data available.</p>';
+  }
+}
+
+function renderInsights(insights) {
+  const el = $('#insightsList');
+  if (!insights.length) { el.innerHTML = ''; return; }
+  el.innerHTML = insights.map(i => {
+    const icon = i.type === 'success' ? '&#10003;' : i.type === 'warning' ? '&#9888;' : '&#8505;';
+    return `<div class="insight-item insight-${i.type}"><span class="insight-icon">${icon}</span><span class="insight-text">${esc(i.text)}</span></div>`;
+  }).join('');
 }
 
 function chartTheme() {
