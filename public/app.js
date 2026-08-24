@@ -157,6 +157,7 @@ function renderTickets() {
         </div>
         <div class="ticket-actions">
           ${statusActions}
+          <button class="btn btn-sm btn-outline" data-act="retrigger" data-id="${tid}" title="Resend submission notification email">Resend Notification</button>
           <button class="btn btn-sm btn-danger" data-act="delete" data-id="${tid}">Delete</button>
         </div>
       </div>`;
@@ -221,6 +222,15 @@ $('#ticketList').addEventListener('click', async e => {
       await api(`/api/tickets/${id}`, { method: 'DELETE' });
       toast('Ticket deleted', 'success');
       loadTickets();
+    } catch (err) { toast(err.message, 'error'); }
+    return;
+  }
+
+  if (act === 'retrigger') {
+    if (!confirm('Resend the submission notification email to admin and requester?')) return;
+    try {
+      const res = await api(`/api/tickets/${id}/retrigger`);
+      toast(res.message || 'Notification re-sent', 'success');
     } catch (err) { toast(err.message, 'error'); }
     return;
   }

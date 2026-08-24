@@ -207,6 +207,15 @@ app.delete('/api/tickets/:id', auth.authenticate, auth.requireAdmin, async (req,
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
+app.post('/api/tickets/:id/retrigger', auth.authenticate, auth.requireAdmin, async (req, res) => {
+  try {
+    const ticket = await Ticket.findById(req.params.id).lean();
+    if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+    sendTicketNotification(ticket).then(() => console.log('[mail] Re-triggered submission notification for', ticket.ticketRef)).catch(err => console.error('[mail] Re-trigger FAILED:', err.message));
+    res.json({ message: `Submission notification re-sent for ${ticket.ticketRef}` });
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
 // ====== Stats & Analytics ======
 
 app.get('/api/stats', auth.authenticate, auth.requireAdmin, async (req, res) => {
