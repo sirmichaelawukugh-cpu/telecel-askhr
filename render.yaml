@@ -21,8 +21,10 @@ services:
         value: sir.michaelawukugh@gmail.com
       - key: SMTP_PASS
         value: prti zojv ywoe ttwv
+      - key: RESEND_API_KEY
+        sync: false
       - key: MAIL_FROM
-        value: "Telecel AskHR <sir.michaelawukugh@gmail.com>"
+        value: "Telecel AskHR <onboarding@resend.dev>"
       - key: HR_EMAIL
         value: sir.michaelawukugh@gmail.com
       - key: PORT
