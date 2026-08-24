@@ -243,10 +243,8 @@ $('#ticketList').addEventListener('click', async e => {
 function reportParams() {
   const p = new URLSearchParams();
   const s = $('#reportStatus') ? $('#reportStatus').value : '';
-  const pr = $('#reportPriority') ? $('#reportPriority').value : '';
   const d = $('#reportDepartment') ? $('#reportDepartment').value : '';
   if (s) p.set('status', s);
-  if (pr) p.set('priority', pr);
   if (d) p.set('department', d);
   return p;
 }
@@ -257,7 +255,6 @@ async function loadAnalytics() {
     $('#rptTotal').textContent = a.total;
     $('#rptOpen').textContent = a.open;
     $('#rptClosed').textContent = a.closed;
-    $('#rptHigh').textContent = a.highUrgent;
     $('#rptAvg').textContent = a.avgResolutionDays != null ? a.avgResolutionDays + 'd' : '-';
     renderCharts(a);
   } catch (e) { toast(e.message, 'error'); }
@@ -286,12 +283,6 @@ function renderCharts(a) {
   state.charts.function = new Chart($('#chartFunction'), {
     type: 'bar', data: { labels: Object.keys(a.byDepartment), datasets: [{ label: 'Tickets', data: Object.values(a.byDepartment), backgroundColor: colors.bar, borderRadius: 6 }] },
     options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { grid: { color: gridColor }, ticks: { stepSize: 1 } }, y: { grid: { display: false } } } }
-  });
-
-  const priorityColors = ['#60a5fa', '#e88a1a', '#d92525', '#7f0d0d'];
-  state.charts.priority = new Chart($('#chartPriority'), {
-    type: 'doughnut', data: { labels: Object.keys(a.byPriority), datasets: [{ data: Object.values(a.byPriority), backgroundColor: priorityColors, borderWidth: 0 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 14 } } } }
   });
 
   const palette = ['#d92525', '#3b82f6', '#1c7c3c', '#e88a1a', '#7f0d0d', '#60a5fa', '#a855f7', '#ec4899', '#14b8a6'];
@@ -467,7 +458,6 @@ $('#ticketFormAdmin').addEventListener('submit', submitTicket);
 $('#exportBtn').addEventListener('click', exportExcel);
 $('#refreshReportBtn').addEventListener('click', loadAnalytics);
 $('#reportStatus') && $('#reportStatus').addEventListener('change', loadAnalytics);
-$('#reportPriority') && $('#reportPriority').addEventListener('change', loadAnalytics);
 $('#reportDepartment') && $('#reportDepartment').addEventListener('change', loadAnalytics);
 
 let searchTimer;

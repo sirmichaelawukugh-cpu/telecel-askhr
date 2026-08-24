@@ -144,10 +144,6 @@
       <div class="quick-actions">
         <h2>Quick Actions</h2>
         <div class="quick-grid">
-          <button class="quick-card" data-view-btn="new">
-            <strong>Submit an HR Request</strong>
-            <span>Leave, payroll, benefits, onboarding and more</span>
-          </button>
           <button class="quick-card" data-view-btn="reports">
             <strong>Reports &amp; Analytics</strong>
             <span>View dashboards and export Excel reports</span>
@@ -297,16 +293,6 @@
           </select>
         </div>
         <div class="form-field">
-          <label for="reportPriority">Priority</label>
-          <select id="reportPriority">
-            <option value="">All Priorities</option>
-            <option>Low</option>
-            <option>Medium</option>
-            <option>High</option>
-            <option>Urgent</option>
-          </select>
-        </div>
-        <div class="form-field">
           <label for="reportDepartment">Function</label>
           <select id="reportDepartment">
             <option value="">All Functions</option>
@@ -333,7 +319,6 @@
         <div class="kpi"><span class="kpi-value" id="rptTotal">0</span><div class="kpi-label">Total Tickets</div></div>
         <div class="kpi"><span class="kpi-value" id="rptOpen">0</span><div class="kpi-label">Open</div></div>
         <div class="kpi"><span class="kpi-value" id="rptClosed">0</span><div class="kpi-label">Closed</div></div>
-        <div class="kpi"><span class="kpi-value" id="rptHigh">0</span><div class="kpi-label">High / Urgent</div></div>
         <div class="kpi"><span class="kpi-value" id="rptAvg">-</span><div class="kpi-label">Avg Resolution (days)</div></div>
       </div>
       <div class="chart-grid">
@@ -344,10 +329,6 @@
         <div class="chart-card">
           <h3>Requests by Function</h3>
           <div class="chart-box"><canvas id="chartFunction"></canvas></div>
-        </div>
-        <div class="chart-card">
-          <h3>Priority Mix</h3>
-          <div class="chart-box"><canvas id="chartPriority"></canvas></div>
         </div>
         <div class="chart-card">
           <h3>Category Breakdown</h3>
