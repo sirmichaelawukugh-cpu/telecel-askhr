@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const Ticket = require('./models/Ticket');
-const { sendTicketToHR, sendConfirmationToRequester, sendStatusUpdate, sendStatusUpdateToHR } = require('./lib/mailer');
+const { sendTicketNotification, sendResolutionNotification } = require('./lib/mailer');
 const { buildTicketsWorkbook } = require('./lib/reports');
 const auth = require('./lib/auth');
 
@@ -163,8 +163,7 @@ async function handleCreateTicket(req, res, files) {
       attachments: files
     });
 
-    sendTicketToHR(ticket.toObject()).then(() => console.log('[mail:hr] Notification sent for', ticket.ticketRef)).catch(err => console.error('[mail:hr] FAILED:', err.message));
-    sendConfirmationToRequester(ticket.toObject()).then(() => console.log('[mail:req] Confirmation sent to', ticket.email)).catch(err => console.error('[mail:req] FAILED:', err.message));
+    sendTicketNotification(ticket.toObject()).then(() => console.log('[mail] Submission notification sent for', ticket.ticketRef)).catch(err => console.error('[mail] Submission FAILED:', err.message));
 
     res.status(201).json(ticket);
   } catch (err) {
@@ -191,12 +190,8 @@ app.patch('/api/tickets/:id', auth.authenticate, auth.requireAdmin, async (req, 
     }
     await ticket.save();
 
-    if (oldStatus !== ticket.status) {
-      const tObj = ticket.toObject();
-      if (ticket.status === 'Resolved' || ticket.status === 'Closed') {
-        sendStatusUpdate(tObj, oldStatus).catch(err => console.error('[mail:status]', err.message));
-      }
-      sendStatusUpdateToHR(tObj, oldStatus).catch(err => console.error('[mail:status-hr]', err.message));
+    if (oldStatus !== ticket.status && (ticket.status === 'Resolved' || ticket.status === 'Closed')) {
+      sendResolutionNotification(ticket.toObject(), oldStatus).then(() => console.log('[mail] Resolution notification sent for', ticket.ticketRef)).catch(err => console.error('[mail] Resolution FAILED:', err.message));
     }
 
     res.json(ticket);
