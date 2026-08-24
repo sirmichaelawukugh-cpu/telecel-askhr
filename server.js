@@ -221,8 +221,13 @@ app.post('/api/tickets/:id/retrigger', auth.authenticate, auth.requireAdmin, asy
 // ====== Stats & Analytics ======
 
 app.get('/api/debug/smtp', auth.authenticate, auth.requireAdmin, async (req, res) => {
-  const result = await testSMTP();
-  res.json(result);
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const dns = require('dns');
+  const diagnostics = { host, ipv4: null, ipv6: null, smtp: null };
+  try { diagnostics.ipv4 = await dns.promises.resolve4(host); } catch (e) { diagnostics.ipv4 = e.message; }
+  try { diagnostics.ipv6 = await dns.promises.resolve6(host); } catch (e) { diagnostics.ipv6 = e.message; }
+  diagnostics.smtp = await testSMTP();
+  res.json(diagnostics);
 });
 
 app.get('/api/stats', auth.authenticate, auth.requireAdmin, async (req, res) => {
