@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const Ticket = require('./models/Ticket');
-const { sendTicketNotification, sendResolutionNotification } = require('./lib/mailer');
+const { sendTicketNotification, sendResolutionNotification, testSMTP } = require('./lib/mailer');
 const { buildTicketsWorkbook } = require('./lib/reports');
 const auth = require('./lib/auth');
 
@@ -163,7 +163,7 @@ async function handleCreateTicket(req, res, files) {
       attachments: files
     });
 
-    sendTicketNotification(ticket.toObject()).then(() => console.log('[mail] Submission notification sent for', ticket.ticketRef)).catch(err => console.error('[mail] Submission FAILED:', err.message));
+    sendTicketNotification(ticket.toObject()).then(r => console.log('[mail] Submission sent for', ticket.ticketRef, '| recipients:', r && r.accepted ? r.accepted.join(', ') : 'unknown')).catch(err => console.error('[mail] Submission FAILED:', err.message, err.stack));
 
     res.status(201).json(ticket);
   } catch (err) {
@@ -191,7 +191,7 @@ app.patch('/api/tickets/:id', auth.authenticate, auth.requireAdmin, async (req, 
     await ticket.save();
 
     if (oldStatus !== ticket.status && (ticket.status === 'Resolved' || ticket.status === 'Closed')) {
-      sendResolutionNotification(ticket.toObject(), oldStatus).then(() => console.log('[mail] Resolution notification sent for', ticket.ticketRef)).catch(err => console.error('[mail] Resolution FAILED:', err.message));
+      sendResolutionNotification(ticket.toObject(), oldStatus).then(r => console.log('[mail] Resolution sent for', ticket.ticketRef, '| recipients:', r && r.accepted ? r.accepted.join(', ') : 'unknown')).catch(err => console.error('[mail] Resolution FAILED:', err.message, err.stack));
     }
 
     res.json(ticket);
@@ -211,12 +211,19 @@ app.post('/api/tickets/:id/retrigger', auth.authenticate, auth.requireAdmin, asy
   try {
     const ticket = await Ticket.findById(req.params.id).lean();
     if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
-    sendTicketNotification(ticket).then(() => console.log('[mail] Re-triggered submission notification for', ticket.ticketRef)).catch(err => console.error('[mail] Re-trigger FAILED:', err.message));
+    sendTicketNotification(ticket).then(r => {
+      console.log('[mail] Re-trigger sent for', ticket.ticketRef, '| recipients:', r && r.accepted ? r.accepted.join(', ') : 'unknown');
+    }).catch(err => console.error('[mail] Re-trigger FAILED:', err.message, err.stack));
     res.json({ message: `Submission notification re-sent for ${ticket.ticketRef}` });
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
 // ====== Stats & Analytics ======
+
+app.get('/api/debug/smtp', auth.authenticate, auth.requireAdmin, async (req, res) => {
+  const result = await testSMTP();
+  res.json(result);
+});
 
 app.get('/api/stats', auth.authenticate, auth.requireAdmin, async (req, res) => {
   try {
