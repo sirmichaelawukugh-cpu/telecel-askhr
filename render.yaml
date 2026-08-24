@@ -11,20 +11,10 @@ services:
         value: telecel-askhr-jwt-secret-2024
       - key: MONGODB_URI
         value: mongodb+srv://askhr_admin:Tettey1234%24%24@cluster0.w8qlyh5.mongodb.net/askhr?retryWrites=true&w=majority
-      - key: SMTP_HOST
-        value: smtp.gmail.com
-      - key: SMTP_PORT
-        value: "465"
-      - key: SMTP_SECURE
-        value: "true"
-      - key: SMTP_USER
-        value: sir.michaelawukugh@gmail.com
-      - key: SMTP_PASS
-        value: prti zojv ywoe ttwv
-      - key: RESEND_API_KEY
+      - key: BREVO_API_KEY
         sync: false
       - key: MAIL_FROM
-        value: "Telecel AskHR <onboarding@resend.dev>"
+        value: sir.michaelawukugh@gmail.com
       - key: HR_EMAIL
         value: sir.michaelawukugh@gmail.com
       - key: PORT
