@@ -167,16 +167,19 @@ function renderTickets() {
 async function submitTicket(e) {
   e.preventDefault();
   const form = e.target;
+  const isPublic = form.id === 'ticketForm';
+  const prefix = isPublic ? 'pub-' : '';
   const fd = new FormData();
-  fd.append('name', form.querySelector('#name').value.trim());
-  fd.append('email', form.querySelector('#email').value.trim());
-  fd.append('phone', form.querySelector('#phone').value.trim());
-  fd.append('department', form.querySelector('#department').value);
-  fd.append('category', form.querySelector('#category').value);
-  fd.append('subject', form.querySelector('#subject').value.trim());
-  fd.append('description', form.querySelector('#description').value.trim());
-  fd.append('priority', form.querySelector('#priority').value);
-  for (const file of form.querySelector('#attachments').files) {
+  fd.append('name', form.querySelector('#' + prefix + 'name').value.trim());
+  fd.append('email', form.querySelector('#' + prefix + 'email').value.trim());
+  fd.append('phone', form.querySelector('#' + prefix + 'phone').value.trim());
+  fd.append('department', form.querySelector('#' + prefix + 'department').value);
+  fd.append('category', form.querySelector('#' + prefix + 'category').value);
+  fd.append('subject', form.querySelector('#' + prefix + 'subject').value.trim());
+  fd.append('description', form.querySelector('#' + prefix + 'description').value.trim());
+  fd.append('priority', isPublic ? 'Medium' : form.querySelector('#priority').value);
+  const fileInput = form.querySelector('#' + prefix + 'attachments');
+  for (const file of fileInput.files) {
     fd.append('attachments', file);
   }
   const btn = form.querySelector('button[type="submit"]');
@@ -193,7 +196,7 @@ async function submitTicket(e) {
       (ticket.attachments && ticket.attachments.length ? ` (${ticket.attachments.length} attachment${ticket.attachments.length > 1 ? 's' : ''})` : '');
     toast(msg, 'success');
     form.reset();
-    updateFileList();
+    updateFileList(prefix);
     if (isAdmin()) {
       setTimeout(() => switchView('tickets'), 1500);
     }
@@ -376,52 +379,56 @@ function attIcon(ext) {
   return map[ext] || '📎';
 }
 
-function updateFileList() {
-  const list = $('#fileList');
-  const files = Array.from($('#attachments').files || []);
+function updateFileList(prefix) {
+  prefix = prefix || '';
+  const list = $(prefix ? '#' + prefix + 'fileList' : '#fileList');
+  const input = $(prefix ? '#' + prefix + 'attachments' : '#attachments');
+  const files = Array.from(input.files || []);
   if (!files.length) { list.innerHTML = ''; return; }
   list.innerHTML = files.map((f, i) => `
     <li>
       <span>${attIcon(f.name.split('.').pop().toLowerCase())} ${esc(f.name)} (${(f.size / 1024).toFixed(1)} KB)</span>
-      <button type="button" data-file-idx="${i}" class="file-remove">&times;</button>
+      <button type="button" data-file-idx="${i}" data-prefix="${prefix}" class="file-remove">&times;</button>
     </li>`).join('');
 }
 
 document.addEventListener('click', e => {
   if (e.target.dataset.fileIdx !== undefined) {
+    const prefix = e.target.dataset.prefix || '';
     const input = e.target.closest('.drop-zone').querySelector('input[type=file]');
     const dt = new DataTransfer();
     Array.from(input.files).forEach((f, i) => { if (i !== Number(e.target.dataset.fileIdx)) dt.items.add(f); });
     input.files = dt.files;
-    updateFileList();
+    updateFileList(prefix);
   }
 });
 
 /* ---------- Drop Zone ---------- */
-['dragenter', 'dragover'].forEach(evt => {
-  document.body.addEventListener(evt, e => {
-    e.preventDefault();
-    e.stopPropagation();
-    $('#dropZone').classList.add('drag-over');
-  });
-});
+document.querySelectorAll('.drop-zone').forEach(zone => {
+  const prefix = zone.id === 'pub-dropZone' ? 'pub-' : '';
+  const fileInput = zone.querySelector('input[type=file]');
+  const fileList = zone.querySelector('.file-list');
 
-['dragleave', 'drop'].forEach(evt => {
-  document.body.addEventListener(evt, e => {
-    e.preventDefault();
-    e.stopPropagation();
-    $('#dropZone').classList.remove('drag-over');
+  zone.addEventListener('click', e => {
+    if (e.target.tagName !== 'BUTTON') fileInput.click();
   });
-});
+  fileInput.addEventListener('change', () => updateFileList(prefix));
 
-document.body.addEventListener('drop', e => {
-  const dt = e.dataTransfer;
-  if (!dt || !dt.files || !dt.files.length) return;
-  const merged = new DataTransfer();
-  Array.from($('#attachments').files).forEach(f => merged.items.add(f));
-  Array.from(dt.files).forEach(f => merged.items.add(f));
-  $('#attachments').files = merged.files;
-  updateFileList();
+  ['dragenter', 'dragover'].forEach(evt => {
+    zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  });
+  ['dragleave', 'drop'].forEach(evt => {
+    zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.remove('drag-over'); });
+  });
+  zone.addEventListener('drop', e => {
+    const dt = e.dataTransfer;
+    if (!dt || !dt.files || !dt.files.length) return;
+    const merged = new DataTransfer();
+    Array.from(fileInput.files).forEach(f => merged.items.add(f));
+    Array.from(dt.files).forEach(f => merged.items.add(f));
+    fileInput.files = merged.files;
+    updateFileList(prefix);
+  });
 });
 
 /* ---------- Event Listeners ---------- */
